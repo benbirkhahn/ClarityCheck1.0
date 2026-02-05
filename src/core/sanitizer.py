@@ -152,9 +152,10 @@ def _redact_hidden_text(page: fitz.Page, finding: Finding):
                 # "Do No Harm" policy: Skip redaction, preserve the document.
                 continue
             else:
-                # Standard Redaction: Black Box
+                # Standard Redaction: Surgical Removal (Transparent)
+                # User requested "remove instead of adding boxes"
                 annot = page.add_redact_annot(rect)
-                annot.set_colors(stroke=(0, 0, 0), fill=(0, 0, 0))
+                annot.set_colors(stroke=None, fill=None) # Invisible/Transparent
                 annot.info["content"] = "Redacted AI Trap"
                 annot.update()
         except Exception:
@@ -171,12 +172,14 @@ def _has_visible_overlap(page: fitz.Page, target_rect: fitz.Rect, target_text: s
     """Check if the target rect overlaps with other visible text."""
     blocks = page.get_text("dict")["blocks"]
     
-    # Expand rect slightly to catch near-misses
+    # Expand rect MORE to catch near-misses (Safety Buffer increased to 6px)
+    # This prevents "Collateral Damage" where apply_redactions() nukes nearby text
+    # Proximity tests show blast radius is > 2px, so 6px is safely conservative.
     check_rect = fitz.Rect(target_rect)
-    check_rect.x0 -= 1
-    check_rect.y0 -= 1
-    check_rect.x1 += 1
-    check_rect.y1 += 1
+    check_rect.x0 -= 6
+    check_rect.y0 -= 6
+    check_rect.x1 += 6
+    check_rect.y1 += 6
 
     for block in blocks:
         if block.get("type") != 0:

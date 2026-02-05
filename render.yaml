@@ -57,10 +57,11 @@ services:
     plan: starter # $10/mo approximately (or use free starter instance if available)
     ipAllowList: [] # Allow internal access only
 
-staticSites:
   # 4. The Frontend (Static Site)
-  - name: clarity-frontend
-    repo: https://github.com/benbirkhahn/ClarityCheck # Assuming this is the repo URL - user needs to confirm
+  - type: web
+    name: clarity-frontend
+    runtime: static
+    repo: https://github.com/benbirkhahn/ClarityCheck
     branch: main
     buildContext: frontend
     buildCommand: npm install && npm run build
