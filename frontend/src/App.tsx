@@ -1,10 +1,11 @@
 import { useState, useCallback } from 'react';
-import { uploadDocument, getAnalysis, downloadSanitized } from './api';
+import { uploadDocument, getAnalysis, downloadSanitized, pollJobStatus } from './api';
 import { UploadResponse, AnalysisResponse, Finding } from './types';
 
 function App() {
   const [isDragging, setIsDragging] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [statusMessage, setStatusMessage] = useState<string>("");
   const [uploadResult, setUploadResult] = useState<UploadResponse | null>(null);
   const [analysis, setAnalysis] = useState<AnalysisResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -16,20 +17,28 @@ function App() {
     }
 
     setIsLoading(true);
+    setStatusMessage("Uploading document...");
     setError(null);
     setUploadResult(null);
     setAnalysis(null);
 
     try {
+      // 1. Upload
       const result = await uploadDocument(file);
       setUploadResult(result);
 
+      // 2. Poll for completion
+      setStatusMessage("Analyzing document (this may take a moment)...");
+      await pollJobStatus(result.job_id);
+
+      // 3. Get final results
       const analysisData = await getAnalysis(result.job_id);
       setAnalysis(analysisData);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Upload failed');
     } finally {
       setIsLoading(false);
+      setStatusMessage("");
     }
   }, []);
 
@@ -85,11 +94,10 @@ function App() {
         {/* Upload Area */}
         {!analysis && (
           <div
-            className={`border-2 border-dashed rounded-xl p-12 text-center transition-all ${
-              isDragging
-                ? 'border-emerald-400 bg-emerald-400/10'
-                : 'border-slate-600 hover:border-slate-500'
-            }`}
+            className={`border-2 border-dashed rounded-xl p-12 text-center transition-all ${isDragging
+              ? 'border-emerald-400 bg-emerald-400/10'
+              : 'border-slate-600 hover:border-slate-500'
+              }`}
             onDrop={handleDrop}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
@@ -97,7 +105,7 @@ function App() {
             {isLoading ? (
               <div className="space-y-4">
                 <div className="animate-spin w-12 h-12 border-4 border-emerald-400 border-t-transparent rounded-full mx-auto" />
-                <p className="text-slate-300">Analyzing document for AI traps...</p>
+                <p className="text-slate-300">{statusMessage || "Processing..."}</p>
               </div>
             ) : (
               <>
@@ -215,7 +223,7 @@ function FindingRow({ finding }: { finding: Finding }) {
         </div>
         <div className="text-slate-500">{expanded ? '▼' : '▶'}</div>
       </div>
-      
+
       {expanded && (
         <div className="mt-4 ml-7 space-y-2 text-sm">
           <div>

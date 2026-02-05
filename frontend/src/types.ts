@@ -2,9 +2,16 @@ export interface UploadResponse {
   job_id: string;
   status: string;
   filename: string;
-  total_findings: number;
-  risk_score: number;
-  risk_level: string;
+  message?: string;
+}
+
+export interface JobStatusResponse {
+  id: string;
+  filename: string;
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+  risk_score?: number;
+  risk_level?: string;
+  error?: string;
 }
 
 export interface Finding {
