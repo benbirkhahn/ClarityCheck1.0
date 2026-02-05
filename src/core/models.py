@@ -63,14 +63,14 @@ class Job(BaseModel):
 # --- Database Models ---
 
 from typing import List
-from sqlmodel import SQLModel, Relationship
+from sqlmodel import SQLModel, Relationship, Field as SQLModelField
 
 class DBJob(SQLModel, table=True):
     __tablename__ = "jobs"
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    id: str = SQLModelField(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
     filename: str
     status: JobStatus = JobStatus.PENDING
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = SQLModelField(default_factory=datetime.utcnow)
     completed_at: Optional[datetime] = None
     error: Optional[str] = None
     
@@ -83,8 +83,8 @@ class DBJob(SQLModel, table=True):
 
 class DBFinding(SQLModel, table=True):
     __tablename__ = "findings"
-    id: Optional[int] = Field(default=None, primary_key=True)
-    job_id: str = Field(foreign_key="jobs.id")
+    id: Optional[int] = SQLModelField(default=None, primary_key=True)
+    job_id: str = SQLModelField(foreign_key="jobs.id")
     
     detector: str
     severity: Severity

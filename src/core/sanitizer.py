@@ -78,8 +78,13 @@ def _sanitize_page(page: fitz.Page, findings: list[Finding]):
         elif detector == "OffScreenTextDetector":
             _redact_hidden_text(page, finding)
         
-        elif detector in ["SuspiciousSpacingDetector", "InvisibleRenderDetector"]:
+        elif detector == "InvisibleRenderDetector":
             _redact_hidden_text(page, finding)
+            
+        # SuspiciousSpacingDetector - User feedback indicates this is often valid text.
+        # We will Report it, but NOT Redact it.
+        # elif detector == "SuspiciousSpacingDetector":
+        #    _redact_hidden_text(page, finding)
         
         elif detector == "LayeredTextDetector":
             _redact_hidden_text(page, finding)
@@ -115,7 +120,8 @@ def _redact_hidden_text(page: fitz.Page, finding: Finding):
                 if abs(span_x - x) < 10 and abs(span_y - y) < 10:
                     # Found the hidden text span - get its full rect
                     rect = fitz.Rect(bbox)
-                    redact_rects.append(rect)
+                    text = span.get("text", "") # Ensure text is captured
+                    redact_rects.append((rect, text))
                     
                 # Also check by text content
                 text = span.get("text", "")
@@ -128,19 +134,71 @@ def _redact_hidden_text(page: fitz.Page, finding: Finding):
                 
                 if (is_white or is_tiny) and text.strip():
                     rect = fitz.Rect(bbox)
-                    redact_rects.append(rect)
+                    redact_rects.append((rect, text))
     
-    # Apply all redactions at once
-    for rect in redact_rects:
+    # Apply redactions
+    for item in redact_rects:
+        # Handle both tuple (rect, text) and legacy (rect)
+        if isinstance(item, tuple):
+            rect, span_text = item
+        else:
+            rect = item
+            span_text = ""
+
         try:
-            page.add_redact_annot(rect)
+            # Check for overlap with visible text before drawing black box
+            if span_text and _has_visible_overlap(page, rect, span_text):
+                # overlap detected: attempting to redact this would destroy the visible text above/below it.
+                # "Do No Harm" policy: Skip redaction, preserve the document.
+                continue
+            else:
+                # Standard Redaction: Black Box
+                annot = page.add_redact_annot(rect)
+                annot.set_colors(stroke=(0, 0, 0), fill=(0, 0, 0))
+                annot.info["content"] = "Redacted AI Trap"
+                annot.update()
         except Exception:
             pass
     
     try:
-        page.apply_redactions()
+        # Apply redactions (burn them in)
+        page.apply_redactions(images=fitz.PDF_REDACT_IMAGE_NONE)
     except Exception:
         pass
+
+
+def _has_visible_overlap(page: fitz.Page, target_rect: fitz.Rect, target_text: str) -> bool:
+    """Check if the target rect overlaps with other visible text."""
+    blocks = page.get_text("dict")["blocks"]
+    
+    # Expand rect slightly to catch near-misses
+    check_rect = fitz.Rect(target_rect)
+    check_rect.x0 -= 1
+    check_rect.y0 -= 1
+    check_rect.x1 += 1
+    check_rect.y1 += 1
+
+    for block in blocks:
+        if block.get("type") != 0:
+            continue
+            
+        for line in block.get("lines", []):
+            for span in line.get("spans", []):
+                # Skip the target text itself
+                # (Simple heuristic: if text matches and rect is identical)
+                span_rect = fitz.Rect(span.get("bbox"))
+                if span_rect.intersects(target_rect) and span.get("text") == target_text:
+                     continue
+                
+                # Check intersection
+                if span_rect.intersects(check_rect):
+                    # We found intersecting text. Is it "ours" (hidden) or "theirs" (visible)?
+                    # If it's another hidden trap, we don't care. 
+                    # If it's normal text (size > 6), we care.
+                    span_size = span.get("size", 0)
+                    if span_size > 6:
+                        return True
+    return False
 
 
 def _remove_annotations(page: fitz.Page, finding: Finding):

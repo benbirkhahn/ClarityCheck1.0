@@ -22,8 +22,8 @@ class SuspiciousSpacingDetector(BaseDetector):
     
     def __init__(self, min_text_length: int = 10):
         self.min_text_length = min_text_length
-        # Pattern: single char, space, single char, space... repeated
-        self.spaced_pattern = re.compile(r'^(\S\s){5,}')
+        # Pattern: single char, space(s), single char, space(s)... repeated
+        self.spaced_pattern = re.compile(r'(\S\s+){5,}')
         # Pattern: multiple spaces between words
         self.multispace_pattern = re.compile(r'\S\s{3,}\S')
     

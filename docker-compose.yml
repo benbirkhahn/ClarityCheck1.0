@@ -12,7 +12,7 @@ services:
     build: .
     command: uvicorn src.api.main:app --host 0.0.0.0 --port 8000 --reload
     volumes:
-      - ./src:/app/src  # Live code reloading
+      - ./src:/app/src # Live code reloading
       - ./uploads:/app/uploads # Shared storage
       - ./clarity.db:/app/clarity.db # Persist DB file
     ports:
@@ -28,7 +28,7 @@ services:
     build: .
     command: celery -A src.core.celery_app worker --loglevel=info
     volumes:
-      - ./src:/app/src  # Live code reloading
+      - ./src:/app/src # Live code reloading
       - ./uploads:/app/uploads # Shared storage (Crucial!)
       - ./clarity.db:/app/clarity.db # Persist DB file
     environment:
@@ -36,4 +36,17 @@ services:
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
     depends_on:
       - redis
+      - web
+
+  # 4. The Frontend UI
+  frontend:
+    build: ./frontend
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - VITE_API_URL=http://localhost:8000
+    depends_on:
       - web

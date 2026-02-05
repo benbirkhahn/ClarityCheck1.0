@@ -1,4 +1,4 @@
-import { UploadResponse, AnalysisResponse, JobStatusResponse } from './types';
+import type { UploadResponse, AnalysisResponse, JobStatusResponse } from './types';
 
 const API_BASE = 'http://127.0.0.1:8000/api';
 

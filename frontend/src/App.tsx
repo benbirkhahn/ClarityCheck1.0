@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { uploadDocument, getAnalysis, downloadSanitized, pollJobStatus } from './api';
-import { UploadResponse, AnalysisResponse, Finding } from './types';
+import type { UploadResponse, AnalysisResponse, Finding } from './types';
 
 function App() {
   const [isDragging, setIsDragging] = useState(false);
