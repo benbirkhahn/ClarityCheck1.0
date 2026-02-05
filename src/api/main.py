@@ -5,15 +5,27 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from src.api.routes import router
 
+from contextlib import asynccontextmanager
+from src.core.database import init_db
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await init_db()
+    yield
+
+from src.core.config import settings
+
 app = FastAPI(
-    title="ClarityCheck API",
+    title=settings.PROJECT_NAME,
     description="Document sanitization for assistive technology compliance",
-    version="0.1.0",
+    version=settings.VERSION,
+    lifespan=lifespan,
+    debug=settings.DEBUG
 )
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:5173"],
+    allow_origins=settings.CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

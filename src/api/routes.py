@@ -1,100 +1,185 @@
 """API routes for ClarityCheck."""
 
+import shutil
+import os
+from pathlib import Path
 from datetime import datetime
-from fastapi import APIRouter, UploadFile, File, HTTPException
-from fastapi.responses import Response
+from typing import List, Optional
 
-from src.core.engine import engine
-from src.core.models import Job, JobStatus, Report
-from src.core.analyzer import analyzer, TrapAnalysis
+from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
+from fastapi.responses import Response
+from sqlmodel import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
+
+from src.core.models import (
+    JobStatus, Report, Finding, Location, Severity,
+    DBJob, DBFinding
+)
+from src.core.analyzer import AnalyzedFinding, TrapType, TrapImpact, TrapAnalysis
+from src.core.database import get_session
+from src.workers.tasks import analyze_document_task
 
 router = APIRouter()
 
-# In-memory storage (replace with DB later)
-jobs: dict[str, Job] = {}
-analyses: dict[str, TrapAnalysis] = {}
-uploaded_files: dict[str, bytes] = {}  # Store original PDFs for sanitization
+UPLOAD_DIR = Path("uploads")
+UPLOAD_DIR.mkdir(exist_ok=True)
 
 
 @router.post("/documents/upload")
-async def upload_document(file: UploadFile = File(...)):
-    """Upload a PDF for analysis."""
+async def upload_document(
+    file: UploadFile = File(...),
+    session: AsyncSession = Depends(get_session)
+):
+    """Upload a PDF for analysis (Async)."""
     if not file.filename.lower().endswith('.pdf'):
         raise HTTPException(status_code=400, detail="Only PDF files are supported")
     
-    # Create job
-    job = Job(filename=file.filename)
-    jobs[job.id] = job
+    # Create Job in DB
+    job = DBJob(filename=file.filename, status=JobStatus.PENDING)
+    session.add(job)
+    await session.commit()
+    await session.refresh(job)
     
     try:
-        # Read file and analyze
-        pdf_bytes = await file.read()
-        uploaded_files[job.id] = pdf_bytes  # Store for later sanitization
-        job.status = JobStatus.PROCESSING
+        # Save file to disk
+        file_path = UPLOAD_DIR / f"{job.id}.pdf"
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+            
+        # Dispatch Celery Task
+        analyze_document_task.delay(job.id, str(file_path))
         
-        report = engine.analyze_bytes(pdf_bytes, file.filename)
-        report.job_id = job.id
-        
-        # Run AI trap analysis
-        analysis = analyzer.analyze(report)
-        analyses[job.id] = analysis
-        
-        job.report = report
-        job.status = JobStatus.COMPLETED
-        job.completed_at = datetime.utcnow()
+        # Update status to indicate queued
+        # (Optional, as Pending is fine, but we can set to Processing explicitly if we want)
+        # We leave it as PENDING or updated by worker to PROCESSING
         
     except Exception as e:
         job.status = JobStatus.FAILED
         job.error = str(e)
-        raise HTTPException(status_code=500, detail=f"Analysis failed: {e}")
+        session.add(job)
+        await session.commit()
+        raise HTTPException(status_code=500, detail=f"Upload failed: {e}")
     
     return {
         "job_id": job.id,
-        "status": job.status,
+        "status": "queued",
         "filename": job.filename,
-        "total_findings": len(report.findings),
-        "risk_score": analysis.risk_score,
-        "risk_level": analysis.risk_level,
+        "message": "Analysis started in background"
     }
 
 
 @router.get("/jobs/{job_id}")
-async def get_job(job_id: str):
+async def get_job(job_id: str, session: AsyncSession = Depends(get_session)):
     """Get job status."""
-    if job_id not in jobs:
+    job = await session.get(DBJob, job_id)
+    if not job:
         raise HTTPException(status_code=404, detail="Job not found")
-    return jobs[job_id]
+    return job
 
 
 @router.get("/jobs/{job_id}/report")
-async def get_report(job_id: str):
+async def get_report(job_id: str, session: AsyncSession = Depends(get_session)):
     """Get raw detection report."""
-    if job_id not in jobs:
+    query = select(DBJob).where(DBJob.id == job_id).options(selectinload(DBJob.findings))
+    result = await session.execute(query)
+    job = result.scalar_one_or_none()
+    
+    if not job:
         raise HTTPException(status_code=404, detail="Job not found")
     
-    job = jobs[job_id]
     if job.status != JobStatus.COMPLETED:
         raise HTTPException(status_code=400, detail=f"Job not completed: {job.status}")
     
-    return job.report
+    # Reconstruct Engine Report
+    findings = []
+    summary = {}
+    
+    for dbf in job.findings:
+        findings.append(Finding(
+            id=str(dbf.id), 
+            detector=dbf.detector,
+            severity=dbf.severity,
+            location=Location(
+                page=dbf.page,
+                x=dbf.x,
+                y=dbf.y,
+                char_index=dbf.char_index
+            ),
+            content=dbf.content,
+            context=dbf.context,
+            explanation=dbf.explanation
+        ))
+        summary[dbf.detector] = summary.get(dbf.detector, 0) + 1
+    
+    return Report(
+        job_id=job.id,
+        filename=job.filename,
+        total_pages=0,
+        findings=findings,
+        summary=summary,
+        created_at=job.created_at
+    )
 
 
 @router.get("/jobs/{job_id}/analysis")
-async def get_analysis(job_id: str):
+async def get_analysis(job_id: str, session: AsyncSession = Depends(get_session)):
     """Get full AI trap analysis with classifications."""
-    if job_id not in analyses:
-        raise HTTPException(status_code=404, detail="Analysis not found")
+    query = select(DBJob).where(DBJob.id == job_id).options(selectinload(DBJob.findings))
+    result = await session.execute(query)
+    job = result.scalar_one_or_none()
     
-    analysis = analyses[job_id]
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
     
-    # Return structured analysis
+    # If not completed, return basic info
+    if job.status != JobStatus.COMPLETED:
+         return {
+            "filename": job.filename,
+            "status": job.status,
+            "risk_score": None
+        }
+
+    analyzed_findings = []
+    summary = {}
+    
+    for dbf in job.findings:
+        # Reconstruct AnalyzedFinding
+        original = Finding(
+            id=str(dbf.id),
+            detector=dbf.detector,
+            severity=dbf.severity,
+            location=Location(
+                page=dbf.page,
+                x=dbf.x,
+                y=dbf.y,
+                char_index=dbf.char_index
+            ),
+            content=dbf.content,
+            context=dbf.context,
+            explanation=dbf.explanation
+        )
+        
+        af = AnalyzedFinding(
+            original=original,
+            trap_type=TrapType(dbf.trap_type) if dbf.trap_type else TrapType.UNKNOWN,
+            impact=TrapImpact(dbf.impact) if dbf.impact else TrapImpact.INFO,
+            decoded_text=dbf.decoded_text or "",
+            classification_reason=dbf.classification_reason or "",
+            recommended_action=dbf.recommended_action or ""
+        )
+        analyzed_findings.append(af)
+        
+        key = af.trap_type.value
+        summary[key] = summary.get(key, 0) + 1
+    
     return {
-        "filename": analysis.filename,
-        "total_pages": analysis.total_pages,
-        "risk_score": analysis.risk_score,
-        "risk_level": analysis.risk_level,
-        "executive_summary": analysis.executive_summary,
-        "summary_by_type": analysis.summary,
+        "filename": job.filename,
+        "total_pages": 0,
+        "risk_score": job.risk_score,
+        "risk_level": job.risk_level,
+        "executive_summary": job.executive_summary,
+        "summary_by_type": summary,
         "findings": [
             {
                 "page": f.original.location.page,
@@ -106,33 +191,77 @@ async def get_analysis(job_id: str):
                 "classification_reason": f.classification_reason,
                 "recommendation": f.recommended_action,
             }
-            for f in analysis.findings
+            for f in analyzed_findings
         ]
     }
 
 
 @router.get("/jobs/{job_id}/sanitize")
-async def sanitize_document(job_id: str):
+async def sanitize_document(
+    job_id: str,
+    session: AsyncSession = Depends(get_session)
+):
     """
     Get sanitized PDF with AI traps removed.
-    
-    Returns the PDF with hidden text removed/neutralized.
     """
-    if job_id not in jobs or job_id not in uploaded_files:
-        raise HTTPException(status_code=404, detail="Job not found")
+    query = select(DBJob).where(DBJob.id == job_id).options(selectinload(DBJob.findings))
+    result = await session.execute(query)
+    job = result.scalar_one_or_none()
     
-    job = jobs[job_id]
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+        
     if job.status != JobStatus.COMPLETED:
         raise HTTPException(status_code=400, detail="Job not completed")
     
+    # Check for file on disk
+    file_path = UPLOAD_DIR / f"{job.id}.pdf"
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="Source file not found on disk")
+
     # Import here to avoid circular imports
     from src.core.sanitizer import sanitize_pdf
     
-    original_pdf = uploaded_files[job_id]
-    analysis = analyses.get(job_id)
+    with open(file_path, "rb") as f:
+        original_pdf_bytes = f.read()
+    
+    # Reconstruct Engine Report (Simplified)
+    findings = []
+    for dbf in job.findings:
+        findings.append(Finding(
+            id=str(dbf.id),
+            detector=dbf.detector,
+            severity=dbf.severity,
+            location=Location(
+                page=dbf.page,
+                x=dbf.x,
+                y=dbf.y,
+                char_index=dbf.char_index
+            ),
+            content=dbf.content,
+            context=dbf.context,
+            explanation=dbf.explanation
+        ))
+    
+    report = Report(job_id=job.id, filename=job.filename, total_pages=0, findings=findings)
+    
+    # Reconstruct minimal analysis object
+    analyzed_findings = []
+    for dbf in job.findings:
+        analyzed_findings.append(AnalyzedFinding(
+            original=findings[0] if findings else None, # Needs generic mock if empty
+            trap_type=TrapType(dbf.trap_type) if dbf.trap_type else TrapType.UNKNOWN,
+            impact=TrapImpact(dbf.impact) if dbf.impact else TrapImpact.INFO,
+            decoded_text="", classification_reason="", recommended_action=""
+        ))
+        
+    analysis = TrapAnalysis(
+        filename=job.filename, total_pages=0, risk_score=job.risk_score or 0, risk_level=job.risk_level or "UNKNOWN",
+        findings=analyzed_findings, summary={}, executive_summary=""
+    )
     
     try:
-        sanitized_pdf = sanitize_pdf(original_pdf, job.report, analysis)
+        sanitized_pdf = sanitize_pdf(original_pdf_bytes, report, analysis)
         
         return Response(
             content=sanitized_pdf,

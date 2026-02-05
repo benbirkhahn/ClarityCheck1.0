@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  # 1. The Message Broker (Redis)
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+
+  # 2. The API Server
+  web:
+    build: .
+    command: uvicorn src.api.main:app --host 0.0.0.0 --port 8000 --reload
+    volumes:
+      - ./src:/app/src  # Live code reloading
+      - ./uploads:/app/uploads # Shared storage
+      - ./clarity.db:/app/clarity.db # Persist DB file
+    ports:
+      - "8000:8000"
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    depends_on:
+      - redis
+
+  # 3. The Background Worker
+  worker:
+    build: .
+    command: celery -A src.core.celery_app worker --loglevel=info
+    volumes:
+      - ./src:/app/src  # Live code reloading
+      - ./uploads:/app/uploads # Shared storage (Crucial!)
+      - ./clarity.db:/app/clarity.db # Persist DB file
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    depends_on:
+      - redis
+      - web
