@@ -12,50 +12,13 @@ services:
         fromDatabase:
           name: clarity-db
           property: connectionString
-      - key: CELERY_BROKER_URL
-        fromService:
-          type: redis
-          name: clarity-redis
-          property: connectionString
-      - key: CELERY_RESULT_BACKEND
-        fromService:
-          type: redis
-          name: clarity-redis
-          property: connectionString
+
       - key: PROJECT_NAME
         value: ClarityCheck Production
       - key: CORS_ORIGINS
         value: https://clarity-frontend.onrender.com # We will need to update this after frontend deploy!
 
-  # 2. The Background Worker
-  - type: worker
-    name: clarity-worker
-    runtime: docker
-    region: oregon
-    plan: starter # Workers are paid ($7/mo) but reliable
-    dockerCommand: celery -A src.core.celery_app worker --loglevel=info
-    envVars:
-      - key: DATABASE_URL
-        fromDatabase:
-          name: clarity-db
-          property: connectionString
-      - key: CELERY_BROKER_URL
-        fromService:
-          type: redis
-          name: clarity-redis
-          property: connectionString
-      - key: CELERY_RESULT_BACKEND
-        fromService:
-          type: redis
-          name: clarity-redis
-          property: connectionString
 
-  # 3. Redis (Managed)
-  - type: redis
-    name: clarity-redis
-    region: oregon
-    plan: starter # $10/mo approximately (or use free starter instance if available)
-    ipAllowList: [] # Allow internal access only
 
   # 4. The Frontend (Static Site)
   - type: web

@@ -18,7 +18,7 @@ from src.core.models import (
 )
 from src.core.analyzer import AnalyzedFinding, TrapType, TrapImpact, TrapAnalysis
 from src.core.database import get_session
-from src.workers.tasks import analyze_document_task
+# from src.workers.tasks import analyze_document_task
 
 router = APIRouter()
 
@@ -47,8 +47,9 @@ async def upload_document(
         with open(file_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
             
-        # Dispatch Celery Task
-        analyze_document_task.delay(job.id, str(file_path))
+        # Dispatch Synchronously (Free Tier)
+        from src.core.processor import analyze_job_sync
+        analyze_job_sync(job.id, str(file_path))
         
         # Update status to indicate queued
         # (Optional, as Pending is fine, but we can set to Processing explicitly if we want)
