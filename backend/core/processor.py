@@ -1,20 +1,16 @@
-from pathlib import Path
 from datetime import datetime
-from sqlmodel import Session, select
-from sqlalchemy.orm import selectinload
+from sqlmodel import Session
+from backend.core.database import sync_engine
+from backend.core.models import DBJob, DBFinding, JobStatus
+from backend.core.engine import engine as detection_engine
+from backend.core.analyzer import analyzer
 
-from src.core.celery_app import celery_app
-from src.core.database import sync_engine
-from src.core.models import DBJob, DBFinding, JobStatus, Report, Finding, Location
-from src.core.engine import engine as detection_engine
-from src.core.analyzer import analyzer, AnalyzedFinding, TrapType, TrapImpact
-
-@celery_app.task
-def analyze_document_task(job_id: str, file_path: str):
+def analyze_job_sync(job_id: str, file_path: str):
     """
-    Background task to analyze a document.
+    Synchronous analysis logic (extracted from Celery worker).
+    Runs detection, AI analysis, and saves results to DB.
     """
-    print(f"Starting analysis for job {job_id} on file {file_path}")
+    print(f"Starting SYNC analysis for job {job_id} on file {file_path}")
     
     with Session(sync_engine) as session:
         # Get Job
@@ -29,9 +25,7 @@ def analyze_document_task(job_id: str, file_path: str):
             session.add(job)
             session.commit()
             
-            # Run Analysis
-            # Note: analyze accepts path or bytes. Since we saved to disk, use path.
-            # However, detection_engine.analyze expects path and opens it with fitz.
+            # Run Analysis (Blocking)
             report = detection_engine.analyze(file_path)
             report.job_id = job.id
             
@@ -70,7 +64,7 @@ def analyze_document_task(job_id: str, file_path: str):
             
             session.add(job)
             session.commit()
-            print(f"Job {job_id} completed successfully.")
+            print(f"Job {job_id} completed successfully (SYNC).")
             
         except Exception as e:
             print(f"Job {job_id} failed: {e}")

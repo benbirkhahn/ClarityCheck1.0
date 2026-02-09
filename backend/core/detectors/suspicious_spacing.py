@@ -3,8 +3,8 @@
 import re
 import fitz  # PyMuPDF
 
-from src.core.models import Finding, Location, Severity
-from src.core.detectors.base import BaseDetector
+from backend.core.models import Finding, Location, Severity
+from backend.core.detectors.base import BaseDetector
 
 
 class SuspiciousSpacingDetector(BaseDetector):

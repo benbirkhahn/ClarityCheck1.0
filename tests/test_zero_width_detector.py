@@ -9,7 +9,7 @@ class TestZeroWidthCharDetector:
     
     def test_detects_zwsp(self):
         """Test detection of Zero Width Space."""
-        from src.core.detectors.zero_width import ZeroWidthCharDetector, ZERO_WIDTH_CHARS
+        from backend.core.detectors.zero_width import ZeroWidthCharDetector, ZERO_WIDTH_CHARS
         
         detector = ZeroWidthCharDetector()
         
@@ -32,7 +32,7 @@ class TestZeroWidthCharDetector:
     
     def test_detects_multiple_chars(self):
         """Test detection of multiple zero-width characters."""
-        from src.core.detectors.zero_width import ZeroWidthCharDetector
+        from backend.core.detectors.zero_width import ZeroWidthCharDetector
         
         detector = ZeroWidthCharDetector()
         
@@ -54,7 +54,7 @@ class TestZeroWidthCharDetector:
     
     def test_clean_text_no_findings(self):
         """Test that clean text produces no findings."""
-        from src.core.detectors.zero_width import ZeroWidthCharDetector
+        from backend.core.detectors.zero_width import ZeroWidthCharDetector
         
         detector = ZeroWidthCharDetector()
         
@@ -73,7 +73,7 @@ class TestZeroWidthCharDetector:
     
     def test_context_extraction(self):
         """Test that context is properly extracted around findings."""
-        from src.core.detectors.zero_width import ZeroWidthCharDetector
+        from backend.core.detectors.zero_width import ZeroWidthCharDetector
         
         detector = ZeroWidthCharDetector(context_chars=10)
         
@@ -101,7 +101,7 @@ class TestZeroWidthCharList:
     
     def test_all_chars_are_invisible(self):
         """Verify all listed chars are actually zero-width/invisible."""
-        from src.core.detectors.zero_width import ZERO_WIDTH_CHARS
+        from backend.core.detectors.zero_width import ZERO_WIDTH_CHARS
         
         # All these should be characters that don't render visibly
         for char, name in ZERO_WIDTH_CHARS.items():

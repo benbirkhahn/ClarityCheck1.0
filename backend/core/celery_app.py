@@ -1,6 +1,6 @@
 import os
 from celery import Celery
-from src.core.config import settings
+from backend.core.config import settings
 
 celery_app = Celery(
     "clarity_check",

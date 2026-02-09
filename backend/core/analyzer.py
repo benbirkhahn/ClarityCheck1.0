@@ -10,7 +10,7 @@ from enum import Enum
 from typing import Optional
 from pydantic import BaseModel
 
-from src.core.models import Finding, Report, Severity
+from backend.core.models import Finding, Report, Severity
 
 
 class TrapType(str, Enum):

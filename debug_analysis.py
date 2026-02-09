@@ -5,8 +5,8 @@ from pathlib import Path
 # Fix path
 sys.path.append(os.getcwd())
 
-from src.core.engine import engine
-from src.core.analyzer import analyzer
+from backend.core.engine import engine
+from backend.core.analyzer import analyzer
 
 def debug_file(path_str):
     path = Path(path_str)

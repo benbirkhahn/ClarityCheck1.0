@@ -23,3 +23,8 @@ sanitized_*.pdf
 
 # Logs
 *.log
+
+# Secrets
+.env
+.env.*
+config.env

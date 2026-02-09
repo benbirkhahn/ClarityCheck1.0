@@ -1,7 +1,7 @@
 import fitz
 import os
-from src.core.engine import engine
-from src.core.sanitizer import sanitize_pdf
+from backend.core.engine import engine
+from backend.core.sanitizer import sanitize_pdf
 
 def test_sanitization():
     # 1. Create a dummy PDF with a "trap"

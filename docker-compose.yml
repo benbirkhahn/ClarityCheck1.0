@@ -10,9 +10,9 @@ services:
   # 2. The API Server
   web:
     build: .
-    command: uvicorn src.api.main:app --host 0.0.0.0 --port 8000 --reload
+    command: uvicorn backend.api.main:app --host 0.0.0.0 --port 8000 --reload
     volumes:
-      - ./src:/app/src # Live code reloading
+      - ./backend:/app/backend # Live code reloading
       - ./uploads:/app/uploads # Shared storage
       - ./clarity.db:/app/clarity.db # Persist DB file
     ports:
@@ -26,9 +26,9 @@ services:
   # 3. The Background Worker
   worker:
     build: .
-    command: celery -A src.core.celery_app worker --loglevel=info
+    command: celery -A backend.core.celery_app worker --loglevel=info
     volumes:
-      - ./src:/app/src # Live code reloading
+      - ./backend:/app/backend # Live code reloading
       - ./uploads:/app/uploads # Shared storage (Crucial!)
       - ./clarity.db:/app/clarity.db # Persist DB file
     environment:

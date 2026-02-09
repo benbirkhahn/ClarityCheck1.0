@@ -12,13 +12,13 @@ from sqlmodel import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from src.core.models import (
+from backend.core.models import (
     JobStatus, Report, Finding, Location, Severity,
     DBJob, DBFinding
 )
-from src.core.analyzer import AnalyzedFinding, TrapType, TrapImpact, TrapAnalysis
-from src.core.database import get_session
-# from src.workers.tasks import analyze_document_task
+from backend.core.analyzer import AnalyzedFinding, TrapType, TrapImpact, TrapAnalysis
+from backend.core.database import get_session
+# from backend.workers.tasks import analyze_document_task
 
 router = APIRouter()
 
@@ -48,7 +48,7 @@ async def upload_document(
             shutil.copyfileobj(file.file, buffer)
             
         # Dispatch Synchronously (Free Tier)
-        from src.core.processor import analyze_job_sync
+        from backend.core.processor import analyze_job_sync
         analyze_job_sync(job.id, str(file_path))
         
         # Update status to indicate queued
@@ -221,7 +221,7 @@ async def sanitize_document(
         raise HTTPException(status_code=404, detail="Source file not found on disk")
 
     # Import here to avoid circular imports
-    from src.core.sanitizer import sanitize_pdf
+    from backend.core.sanitizer import sanitize_pdf
     
     with open(file_path, "rb") as f:
         original_pdf_bytes = f.read()

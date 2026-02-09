@@ -7,8 +7,8 @@ Takes a PDF and removes/neutralizes hidden content identified by the detection e
 import fitz  # PyMuPDF
 from typing import Optional
 
-from src.core.models import Report, Finding
-from src.core.analyzer import TrapAnalysis, TrapType
+from backend.core.models import Report, Finding
+from backend.core.analyzer import TrapAnalysis, TrapType
 
 
 def sanitize_pdf(

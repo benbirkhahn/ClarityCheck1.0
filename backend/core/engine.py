@@ -3,18 +3,18 @@
 from pathlib import Path
 import fitz  # PyMuPDF
 
-from src.core.models import Report, Finding
-from src.core.detectors.base import BaseDetector
-from src.core.detectors.zero_width import ZeroWidthCharDetector
-from src.core.detectors.matching_color import MatchingColorDetector
-from src.core.detectors.off_screen import OffScreenTextDetector
-from src.core.detectors.tiny_text import TinyTextDetector
-from src.core.detectors.annotations import HiddenAnnotationDetector
-from src.core.detectors.metadata import MetadataDetector
-from src.core.detectors.invisible_render import InvisibleRenderDetector
-from src.core.detectors.low_contrast import LowContrastDetector
-from src.core.detectors.suspicious_spacing import SuspiciousSpacingDetector
-from src.core.detectors.layered_text import LayeredTextDetector
+from backend.core.models import Report, Finding
+from backend.core.detectors.base import BaseDetector
+from backend.core.detectors.zero_width import ZeroWidthCharDetector
+from backend.core.detectors.matching_color import MatchingColorDetector
+from backend.core.detectors.off_screen import OffScreenTextDetector
+from backend.core.detectors.tiny_text import TinyTextDetector
+from backend.core.detectors.annotations import HiddenAnnotationDetector
+from backend.core.detectors.metadata import MetadataDetector
+from backend.core.detectors.invisible_render import InvisibleRenderDetector
+from backend.core.detectors.low_contrast import LowContrastDetector
+from backend.core.detectors.suspicious_spacing import SuspiciousSpacingDetector
+from backend.core.detectors.layered_text import LayeredTextDetector
 
 
 class DetectionEngine:

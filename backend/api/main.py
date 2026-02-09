@@ -3,17 +3,17 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from src.api.routes import router
+from backend.api.routes import router
 
 from contextlib import asynccontextmanager
-from src.core.database import init_db
+from backend.core.database import init_db
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await init_db()
     yield
 
-from src.core.config import settings
+from backend.core.config import settings
 
 app = FastAPI(
     title=settings.PROJECT_NAME,

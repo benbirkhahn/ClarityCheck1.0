@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 import fitz  # PyMuPDF
 
 if TYPE_CHECKING:
-    from src.core.models import Finding, Severity
+    from backend.core.models import Finding, Severity
 
 
 class BaseDetector(ABC):

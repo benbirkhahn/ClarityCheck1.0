@@ -13,7 +13,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy source code
-COPY src/ ./src/
+COPY backend/ ./backend/
 
 # Create uploads directory
 RUN mkdir -p uploads
@@ -22,4 +22,4 @@ RUN mkdir -p uploads
 ENV PYTHONPATH=/app
 
 # Default command (can be overridden in docker-compose)
-CMD ["uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "backend.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
