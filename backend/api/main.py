@@ -37,3 +37,7 @@ app.include_router(router, prefix="/api")
 @app.get("/")
 async def root():
     return {"name": "ClarityCheck API", "status": "healthy", "version": "0.1.0"}
+
+@app.get("/health")
+async def health_check():
+    return {"status": "ok"}
