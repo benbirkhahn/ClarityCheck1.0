@@ -6,7 +6,7 @@ from pathlib import Path
 from datetime import datetime
 from typing import List, Optional
 
-from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
+from fastapi import APIRouter, UploadFile, File, HTTPException, Depends, BackgroundTasks
 from fastapi.responses import Response
 from sqlmodel import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -28,6 +28,7 @@ UPLOAD_DIR.mkdir(exist_ok=True)
 
 @router.post("/documents/upload")
 async def upload_document(
+    background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     session: AsyncSession = Depends(get_session)
 ):
@@ -47,9 +48,9 @@ async def upload_document(
         with open(file_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
             
-        # Dispatch Synchronously (Free Tier)
+        # Dispatch via BackgroundTasks (Non-blocking)
         from backend.core.processor import analyze_job_sync
-        analyze_job_sync(job.id, str(file_path))
+        background_tasks.add_task(analyze_job_sync, job.id, str(file_path))
         
         # Update status to indicate queued
         # (Optional, as Pending is fine, but we can set to Processing explicitly if we want)
