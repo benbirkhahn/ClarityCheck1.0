@@ -26,4 +26,4 @@ COPY backend/start.sh /app/start.sh
 RUN chmod +x /app/start.sh
 
 # Default command
-CMD ["/app/start.sh"]
+CMD ["/bin/bash", "/app/start.sh"]
