@@ -121,6 +121,8 @@ async def get_report(job_id: str, session: AsyncSession = Depends(get_session)):
                 page=dbf.page,
                 x=dbf.x,
                 y=dbf.y,
+                width=dbf.width,
+                height=dbf.height,
                 char_index=dbf.char_index
             ),
             content=dbf.content,
@@ -272,6 +274,8 @@ async def sanitize_document(
                 page=dbf.page,
                 x=dbf.x,
                 y=dbf.y,
+                width=dbf.width,
+                height=dbf.height,
                 char_index=dbf.char_index
             ),
             content=dbf.content,
