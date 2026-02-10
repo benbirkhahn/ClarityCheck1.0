@@ -18,19 +18,27 @@ if "asyncpg" in DATABASE_URL:
 else:
     SYNC_DATABASE_URL = DATABASE_URL
 
-engine = create_async_engine(
-    DATABASE_URL, 
-    echo=settings.DEBUG, 
-    future=True,
-    pool_size=5,
-    max_overflow=0
-)
-sync_engine = create_engine(
-    SYNC_DATABASE_URL, 
-    echo=settings.DEBUG,
-    pool_size=5,
-    max_overflow=0
-)
+# Apply connection pool limits only for PostgreSQL (not SQLite)
+if "postgresql" in DATABASE_URL:
+    engine = create_async_engine(
+        DATABASE_URL, 
+        echo=settings.DEBUG, 
+        future=True,
+        pool_size=5,
+        max_overflow=0
+    )
+else:
+    engine = create_async_engine(DATABASE_URL, echo=settings.DEBUG, future=True)
+
+if "postgresql" in SYNC_DATABASE_URL:
+    sync_engine = create_engine(
+        SYNC_DATABASE_URL, 
+        echo=settings.DEBUG,
+        pool_size=5,
+        max_overflow=0
+    )
+else:
+    sync_engine = create_engine(SYNC_DATABASE_URL, echo=settings.DEBUG)
 
 async def init_db():
     async with engine.begin() as conn:
