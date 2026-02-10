@@ -183,9 +183,18 @@ def _redact_hidden_text(page: fitz.Page, finding: Finding):
 
         try:
             # Check for overlap with visible text before drawing black box
-            if span_text and _has_visible_overlap(page, rect, span_text):
+            # SAFETY OVERRIDE: If it's definitely a trap (White/Tiny/Layered), NUKE IT regardless of overlap.
+            # The "Do No Harm" logic is mainly for "Suspicious Spacing" or "Ambiguous" detections.
+            is_high_confidence_trap = (
+                finding.detector in ["MatchingColorDetector", "TinyTextDetector", "LayeredTextDetector", "InvisibleRenderDetector"]
+                # We can't access is_white/is_tiny here easily as they were local to the loop above.
+                # But finding.detector is a good proxy.
+            )
+
+            if not is_high_confidence_trap and span_text and _has_visible_overlap(page, rect, span_text):
                 # overlap detected: attempting to redact this would destroy the visible text above/below it.
                 # "Do No Harm" policy: Skip redaction, preserve the document.
+                schema_logger.warning(f"Skipping redaction due to visible overlap: {span_text} ({finding.detector})")
                 continue
             else:
                 # Standard Redaction: Surgical Removal (Transparent)
