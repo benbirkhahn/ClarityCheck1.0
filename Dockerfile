@@ -21,5 +21,9 @@ RUN mkdir -p uploads
 # Set PYTHONPATH to include /app so imports work correctly
 ENV PYTHONPATH=/app
 
-# Default command (can be overridden in docker-compose)
-CMD ["uvicorn", "backend.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Copy and prepare start script
+COPY backend/start.sh /app/start.sh
+RUN chmod +x /app/start.sh
+
+# Default command
+CMD ["/app/start.sh"]
