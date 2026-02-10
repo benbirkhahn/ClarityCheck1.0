@@ -6,7 +6,7 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ onSanitize }: SidebarProps) {
-    const { findings, isIgnored, toggleIgnored } = useFindingStore();
+    const { findings, isIgnored, toggleIgnored, invertSelection } = useFindingStore();
 
     const toRemoveCount = findings.filter(f => !isIgnored(f.id)).length;
     const toKeepCount = findings.filter(f => isIgnored(f.id)).length;
@@ -15,7 +15,7 @@ export default function Sidebar({ onSanitize }: SidebarProps) {
         <div className="w-96 bg-slate-800 border-l border-slate-700 flex flex-col h-full">
             <div className="p-4 border-b border-slate-700">
                 <h2 className="text-xl font-bold text-white mb-2">Review Findings</h2>
-                <div className="flex gap-2 text-sm">
+                <div className="flex gap-2 text-sm mb-3">
                     <div className="px-2 py-1 bg-red-500/20 border border-red-500 rounded text-red-300">
                         <strong>{toRemoveCount}</strong> Will Remove
                     </div>
@@ -23,6 +23,12 @@ export default function Sidebar({ onSanitize }: SidebarProps) {
                         <strong>{toKeepCount}</strong> Will Keep
                     </div>
                 </div>
+                <button
+                    onClick={invertSelection}
+                    className="w-full px-3 py-1.5 bg-slate-700 hover:bg-slate-600 border border-slate-600 rounded text-sm text-white transition-colors"
+                >
+                    ⇄ Invert Selection
+                </button>
                 <p className="text-xs text-slate-500 mt-2">Click any finding to toggle Keep/Remove</p>
             </div>
 
