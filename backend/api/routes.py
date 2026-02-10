@@ -36,29 +36,35 @@ async def upload_document(
     if not file.filename.lower().endswith('.pdf'):
         raise HTTPException(status_code=400, detail="Only PDF files are supported")
     
-    # Create Job in DB
-    job = DBJob(filename=file.filename, status=JobStatus.PENDING)
-    session.add(job)
-    await session.commit()
-    await session.refresh(job)
-    
+    print(f"[{datetime.utcnow()}] Received upload: {file.filename}")
     try:
-        # Validate file size (10MB limit)
-        file.file.seek(0, 2)  # Seek to end
-        file_size = file.file.tell()
-        file.file.seek(0)  # Reset to beginning
-        
-        if file_size > 10_000_000:  # 10MB
-            raise HTTPException(status_code=413, detail="File too large. Maximum size is 10MB")
-        
+        # Create Job in DB with timeout
+        import asyncio
+        job = DBJob(filename=file.filename, status=JobStatus.PENDING)
+        session.add(job)
+        print(f"[{datetime.utcnow()}] committing job to DB...")
+        try:
+            await asyncio.wait_for(session.commit(), timeout=5.0)
+        except asyncio.TimeoutError:
+            print(f"[{datetime.utcnow()}] DB Commit Timed Out!")
+            raise HTTPException(status_code=504, detail="Database commit timed out")
+            
+        await session.refresh(job)
+        print(f"[{datetime.utcnow()}] Job created: {job.id}")
+    
         # Save file to disk
         file_path = UPLOAD_DIR / f"{job.id}.pdf"
         with open(file_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
+        print(f"[{datetime.utcnow()}] File saved to {file_path}")
             
         # Dispatch via BackgroundTasks (Non-blocking)
         from backend.core.processor import analyze_job_sync
         background_tasks.add_task(analyze_job_sync, job.id, str(file_path))
+        print(f"[{datetime.utcnow()}] Background task scheduled")
+        
+    except Exception as e:
+        print(f"[{datetime.utcnow()}] Upload Error: {e}")
         
         # Update status to indicate queued
         # (Optional, as Pending is fine, but we can set to Processing explicitly if we want)
