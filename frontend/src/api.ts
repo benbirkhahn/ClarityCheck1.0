@@ -1,6 +1,7 @@
 import type { UploadResponse, AnalysisResponse, JobStatusResponse } from './types';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000/api';
+const ENV_API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000/api';
+const API_BASE = ENV_API_URL.endsWith('/api') ? ENV_API_URL : `${ENV_API_URL}/api`;
 
 export async function uploadDocument(file: File): Promise<UploadResponse> {
   const formData = new FormData();
