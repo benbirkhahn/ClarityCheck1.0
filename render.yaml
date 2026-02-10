@@ -5,7 +5,7 @@ services:
     runtime: docker
     plan: free
     region: oregon 
-    dockerCommand: ./start.sh
+
     healthCheckPath: /health
     envVars:
       - key: DATABASE_URL
