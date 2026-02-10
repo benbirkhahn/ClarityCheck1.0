@@ -14,7 +14,7 @@ class TinyTextDetector(BaseDetector):
     severity = Severity.HIGH
     enabled = True
     
-    def __init__(self, min_font_size: float = 4.0, min_text_length: int = 5):
+    def __init__(self, min_font_size: float = 3.0, min_text_length: int = 5):
         """
         Args:
             min_font_size: Text smaller than this (in points) is flagged

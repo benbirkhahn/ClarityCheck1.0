@@ -27,6 +27,10 @@ def is_near_black(color: tuple, threshold: float = 0.1) -> bool:
     return all(c < threshold for c in color)
 
 
+# Formatting characters that are legitimate even when white
+FORMATTING_CHARS = {'•', '○', '■', '□', '-', '|', '_', '▪', '◦', '▸', '▹', '◂', '◃'}
+
+
 class MatchingColorDetector(BaseDetector):
     """Detects text where the color closely matches the background."""
     
@@ -35,14 +39,16 @@ class MatchingColorDetector(BaseDetector):
     severity = Severity.HIGH
     enabled = True
     
-    def __init__(self, color_threshold: float = 0.05, min_text_length: int = 3):
+    def __init__(self, color_threshold: float = 0.05, min_text_length: int = 3, min_font_size_for_white: float = 3.0):
         """
         Args:
             color_threshold: Max color distance to consider "matching" (0-1 scale)
             min_text_length: Minimum text length to report (avoid single chars)
+            min_font_size_for_white: For white text, only flag if smaller than this (training data threshold)
         """
         self.color_threshold = color_threshold
         self.min_text_length = min_text_length
+        self.min_font_size_for_white = min_font_size_for_white
     
     def detect(self, doc: fitz.Document) -> list[Finding]:
         """Scan for text with colors matching likely backgrounds."""
@@ -79,11 +85,22 @@ class MatchingColorDetector(BaseDetector):
                     # Get text color (PyMuPDF returns as int, convert to RGB tuple)
                     color_int = span.get("color", 0)
                     text_color = self._int_to_rgb(color_int)
+                    font_size = span.get("size", 12)
                     
                     # Check if text color matches background
                     distance = color_distance(text_color, page_bg)
                     
                     if distance < self.color_threshold:
+                        # Training data shows visible white text (≥10pt) is often legitimate
+                        # Only flag white text if it's tiny (<3pt)
+                        if is_near_white(text_color):
+                            # Check for formatting characters with visible font size
+                            if len(text) <= 1 and text in FORMATTING_CHARS and font_size >= 10:
+                                continue  # Skip visible formatting characters
+                            
+                            # Only flag if tiny
+                            if font_size >= self.min_font_size_for_white:
+                                continue  # Skip visible white text
                         bbox = span.get("bbox", (0, 0, 0, 0))
                         
                         # Determine the specific issue
