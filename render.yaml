@@ -17,8 +17,7 @@ services:
 
       - key: PROJECT_NAME
         value: ClarityCheck Production
-      - key: CORS_ORIGINS
-        value: https://clarity-frontend.onrender.com # We will need to update this after frontend deploy!
+
 
 
 
