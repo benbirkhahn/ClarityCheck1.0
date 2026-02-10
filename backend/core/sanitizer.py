@@ -168,11 +168,37 @@ def _redact_hidden_text(page: fitz.Page, finding: Finding):
         text_instances = page.search_for(finding.content)
         if text_instances:
             schema_logger.info(f"Fallback Search: Found {len(text_instances)} instances of '{finding.content}'")
+            
+            # Filter by location AND dimension to avoid redacting legitimate text
+            expected_x = finding.location.x or 0
+            expected_y = finding.location.y or 0
+            expected_width = finding.width or 0
+            expected_height = finding.height or 0
+            
             for rect in text_instances:
-                # Add all instances of this exact text
-                redact_rects.append((rect, finding.content))
+                # Check if this instance matches the expected location
+                loc_match = abs(rect.x0 - expected_x) < 10 and abs(rect.y0 - expected_y) < 10
+                
+                # Check if this instance matches the expected dimensions
+                # Allow some tolerance for PDF rendering variations
+                width_match = expected_width > 0 and abs(rect.width - expected_width) < 5
+                height_match = expected_height > 0 and abs(rect.height - expected_height) < 2
+                size_match = width_match and height_match
+                
+                # Only redact if EITHER location matches OR dimensions match
+                # This handles cases where coordinates drift but size is consistent
+                if loc_match or size_match:
+                    redact_rects.append((rect, finding.content))
+                    schema_logger.info(f"Fallback Match: Using instance at {rect} (loc_match={loc_match}, size_match={size_match})")
+                    break  # Only take the first match to avoid over-redaction
+                else:
+                    schema_logger.debug(f"Skipping instance at {rect} - no match (expected: {expected_x},{expected_y} w={expected_width} h={expected_height})")
+            
+            if not any(loc_match or size_match for rect in text_instances):
+                schema_logger.warning(f"Fallback Search: Found text but no instances matched location/size criteria")
         else:
              schema_logger.warning(f"Fallback Search: Could NOT find '{finding.content}' on page!")
+
 
     
     # Apply redactions
