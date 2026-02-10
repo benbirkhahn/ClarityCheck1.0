@@ -3,17 +3,20 @@ import type { Finding } from '../types';
 
 interface FindingState {
     findings: Finding[];
-    ignoredFindingIds: Set<string>; // IDs of findings to IGNORE (keep in doc)
+    ignoredFindingIds: Set<string>;
+    hoveredFindingId: string | null;
 
     setFindings: (findings: Finding[]) => void;
     toggleIgnored: (id: string) => void;
     isIgnored: (id: string) => boolean;
+    setHoveredFinding: (id: string | null) => void;
     reset: () => void;
 }
 
 export const useFindingStore = create<FindingState>((set, get) => ({
     findings: [],
     ignoredFindingIds: new Set(),
+    hoveredFindingId: null,
 
     setFindings: (findings) => set({ findings }),
 
@@ -29,5 +32,7 @@ export const useFindingStore = create<FindingState>((set, get) => ({
 
     isIgnored: (id) => get().ignoredFindingIds.has(id),
 
-    reset: () => set({ findings: [], ignoredFindingIds: new Set() })
+    setHoveredFinding: (id) => set({ hoveredFindingId: id }),
+
+    reset: () => set({ findings: [], ignoredFindingIds: new Set(), hoveredFindingId: null })
 }));

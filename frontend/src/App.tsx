@@ -193,24 +193,6 @@ function App() {
             {/* Sidebar */}
             <Sidebar
               onSanitize={handleSanitize}
-              onReset={() => {
-                // Logic to toggle all? Or just reset to "select all"?
-                // For now, toggle all ignored?
-                // Let's iterate findings.
-                // Actually store.reset clears findings. We want to clear IGNORED list.
-                // I need to add a clearIgnored() action to store? 
-                // Or just iterate:
-                // But store provides reset() which wipes everything.
-                // For now I'll just skip this button logic or implement simple "Reset Selection" logic manually if needed.
-                // Let's assume onReset resets the "Ignored" set to empty (Select All).
-                // I will implement a store action for this later if needed, or loop.
-                // Actually, findingStore has reset() which clears findings too.
-                // I should probably rely on manual toggling for now.
-                // Or use a hack:
-                // resetStore(); setFindings(findings); // simple reset
-                resetStore();
-                setFindings(findings);
-              }}
             />
           </div>
         )}

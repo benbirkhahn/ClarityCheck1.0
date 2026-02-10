@@ -4,8 +4,6 @@ import { useFindingStore } from '../store/findingStore';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
 
-// Configure worker (should be handled by vite-plugin-static-copy, but explicit path helps)
-// Actually, with vite-plugin-static-copy, it is at root.
 pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
 
 interface PDFViewerProps {
@@ -14,8 +12,8 @@ interface PDFViewerProps {
 
 export default function PDFViewer({ fileUrl }: PDFViewerProps) {
     const [numPages, setNumPages] = useState<number>(0);
-    const [scale, setScale] = useState<number>(1.2); // Default zoom
-    const { findings, isIgnored, toggleIgnored } = useFindingStore();
+    const [scale, setScale] = useState<number>(1.2);
+    const { findings, isIgnored, toggleIgnored, hoveredFindingId, setHoveredFinding } = useFindingStore();
 
     function onDocumentLoadSuccess({ numPages }: { numPages: number }) {
         setNumPages(numPages);
@@ -37,11 +35,11 @@ export default function PDFViewer({ fileUrl }: PDFViewerProps) {
                 className="shadow-2xl"
             >
                 {Array.from(new Array(numPages), (_, index) => (
-                    <div key={`page_${index + 1}`} className="mb-4 relative group">
+                    <div key={`page_${index + 1}`} className="mb-4 relative">
                         <Page
                             pageNumber={index + 1}
                             scale={scale}
-                            renderTextLayer={false} // Disable text selection for cleaner UI? Or keep it? keeping it for now.
+                            renderTextLayer={false}
                             renderAnnotationLayer={false}
                             className="border border-slate-700"
                         />
@@ -50,11 +48,11 @@ export default function PDFViewer({ fileUrl }: PDFViewerProps) {
                         <div className="absolute inset-0 pointer-events-none">
                             {findings
                                 .filter(f => f.page === index + 1)
-                                .map(finding => {
+                                .map((finding) => {
                                     const ignored = isIgnored(finding.id);
+                                    const isHovered = hoveredFindingId === finding.id;
+                                    const findingNumber = findings.indexOf(finding) + 1;
 
-                                    // Default width/height if not present (fallback for older findings)
-                                    // This shouldn't happen with new backend code.
                                     const w = finding.width || 100;
                                     const h = finding.height || 20;
 
@@ -70,20 +68,29 @@ export default function PDFViewer({ fileUrl }: PDFViewerProps) {
                                             }}
                                             className={`
                                                 pointer-events-auto cursor-pointer transition-all duration-200
-                                                border-2 rounded-sm
+                                                border-2 rounded-sm relative
                                                 ${ignored
-                                                    ? 'border-slate-500 bg-slate-500/20 opacity-50 grayscale'
-                                                    : 'border-red-500 bg-red-500/20 animate-pulse hover:bg-red-500/40'
+                                                    ? 'border-slate-500 bg-slate-500/20 opacity-50'
+                                                    : isHovered
+                                                        ? 'border-yellow-400 bg-yellow-500/40 ring-2 ring-yellow-400'
+                                                        : 'border-red-500 bg-red-500/20 hover:bg-red-500/40'
                                                 }
                                             `}
                                             onClick={() => toggleIgnored(finding.id)}
-                                            title={`${finding.trap_type}: ${finding.explanation}`}
+                                            onMouseEnter={() => setHoveredFinding(finding.id)}
+                                            onMouseLeave={() => setHoveredFinding(null)}
+                                            title={`Finding #${findingNumber}: ${finding.explanation}`}
                                         >
-                                            {!ignored && (
-                                                <span className="absolute -top-6 left-0 bg-red-600 text-white text-[10px] px-1 rounded shadow whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">
-                                                    {finding.trap_type}
-                                                </span>
-                                            )}
+                                            {/* Finding Number Badge */}
+                                            <div className={`
+                                                absolute -top-7 -left-1 
+                                                ${ignored ? 'bg-slate-600' : 'bg-red-600'} 
+                                                text-white text-xs font-bold px-2 py-1 rounded shadow-lg
+                                                flex items-center gap-1
+                                            `}>
+                                                <span>#{findingNumber}</span>
+                                                {ignored && <span className="text-[10px]">✓ Keep</span>}
+                                            </div>
                                         </div>
                                     );
                                 })}
