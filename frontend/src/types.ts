@@ -15,7 +15,12 @@ export interface JobStatusResponse {
 }
 
 export interface Finding {
+  id: string;
   page: number;
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
   trap_type: 'instruction' | 'canary' | 'watermark' | 'obfuscation' | 'metadata_leak' | 'unknown';
   impact: 'critical' | 'high' | 'medium' | 'low' | 'info';
   hidden_text: string;
@@ -23,6 +28,7 @@ export interface Finding {
   detection_method: string;
   classification_reason: string;
   recommendation: string;
+  explanation: string;
 }
 
 export interface AnalysisResponse {

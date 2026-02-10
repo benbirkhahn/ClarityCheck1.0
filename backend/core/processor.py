@@ -42,6 +42,7 @@ def analyze_job_sync(job_id: str, file_path: str):
             # Save Findings
             for af in analysis.findings:
                 db_finding = DBFinding(
+                    id=af.original.id,  # Use the UUID from the finding
                     job_id=job.id,
                     detector=af.original.detector,
                     severity=af.original.severity,

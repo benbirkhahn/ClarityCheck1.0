@@ -25,6 +25,8 @@ class Location(BaseModel):
     page: int
     x: Optional[float] = None
     y: Optional[float] = None
+    width: Optional[float] = None
+    height: Optional[float] = None
     char_index: Optional[int] = None
 
 
@@ -83,7 +85,7 @@ class DBJob(SQLModel, table=True):
 
 class DBFinding(SQLModel, table=True):
     __tablename__ = "findings"
-    id: Optional[int] = SQLModelField(default=None, primary_key=True)
+    id: str = SQLModelField(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
     job_id: str = SQLModelField(foreign_key="jobs.id")
     
     detector: str
@@ -91,6 +93,8 @@ class DBFinding(SQLModel, table=True):
     page: int
     x: Optional[float] = None
     y: Optional[float] = None
+    width: Optional[float] = None
+    height: Optional[float] = None
     char_index: Optional[int] = None
     content: str
     context: str

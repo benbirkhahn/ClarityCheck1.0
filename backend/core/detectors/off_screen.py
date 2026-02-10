@@ -78,6 +78,8 @@ class OffScreenTextDetector(BaseDetector):
                                 page=page_num + 1,
                                 x=x0,
                                 y=y0,
+                                width=x1-x0,
+                                height=y1-y0
                             ),
                             content="Off-screen text",
                             context=text[:100] + ("..." if len(text) > 100 else ""),

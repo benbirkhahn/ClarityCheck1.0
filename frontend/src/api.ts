@@ -52,8 +52,14 @@ export async function getAnalysis(jobId: string): Promise<AnalysisResponse> {
   return response.json();
 }
 
-export async function downloadSanitized(jobId: string, filename: string): Promise<void> {
-  const response = await fetch(`${API_BASE}/jobs/${jobId}/sanitize`);
+export async function downloadSanitized(jobId: string, filename: string, confirmedFindingIds?: string[]): Promise<void> {
+  const response = await fetch(`${API_BASE}/jobs/${jobId}/sanitize`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ confirmed_finding_ids: confirmedFindingIds }),
+  });
 
   if (!response.ok) {
     throw new Error(`Failed to sanitize: ${response.statusText}`);

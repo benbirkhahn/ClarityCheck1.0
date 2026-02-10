@@ -89,11 +89,13 @@ class LayeredTextDetector(BaseDetector):
                     findings.append(Finding(
                         detector=self.name,
                         severity=self.severity,
-                        location=Location(
-                            page=page_num + 1,
-                            x=text_rect.x0,
-                            y=text_rect.y0,
-                        ),
+                            location=Location(
+                                page=page_num + 1,
+                                x=text_rect.x0,
+                                y=text_rect.y0,
+                                width=text_rect.width,
+                                height=text_rect.height
+                            ),
                         content=f"Text under image ({overlap*100:.0f}% overlap)",
                         context=text[:100] + ("..." if len(text) > 100 else ""),
                         explanation="Text appears to be positioned under an image. This text is invisible to users but readable by AI/screen readers."

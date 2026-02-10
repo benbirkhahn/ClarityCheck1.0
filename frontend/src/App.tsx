@@ -1,6 +1,9 @@
 import { useState, useCallback } from 'react';
 import { uploadDocument, getAnalysis, downloadSanitized, pollJobStatus } from './api';
-import type { UploadResponse, AnalysisResponse, Finding } from './types';
+import type { UploadResponse, AnalysisResponse } from './types';
+import PDFViewer from './components/PDFViewer';
+import Sidebar from './components/Sidebar';
+import { useFindingStore } from './store/findingStore';
 
 function App() {
   const [isDragging, setIsDragging] = useState(false);
@@ -9,6 +12,12 @@ function App() {
   const [uploadResult, setUploadResult] = useState<UploadResponse | null>(null);
   const [analysis, setAnalysis] = useState<AnalysisResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // Store actions
+  const setFindings = useFindingStore(state => state.setFindings);
+  const resetStore = useFindingStore(state => state.reset);
+  const findings = useFindingStore(state => state.findings);
+  const ignoredFindingIds = useFindingStore(state => state.ignoredFindingIds);
 
   const handleFile = useCallback(async (file: File) => {
     if (!file.name.toLowerCase().endsWith('.pdf')) {
@@ -21,6 +30,7 @@ function App() {
     setError(null);
     setUploadResult(null);
     setAnalysis(null);
+    resetStore();
 
     try {
       // 1. Upload
@@ -34,13 +44,17 @@ function App() {
       // 3. Get final results
       const analysisData = await getAnalysis(result.job_id);
       setAnalysis(analysisData);
+
+      // Initialize Store
+      setFindings(analysisData.findings);
+
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Upload failed');
     } finally {
       setIsLoading(false);
       setStatusMessage("");
     }
-  }, []);
+  }, [resetStore, setFindings]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -58,231 +72,151 @@ function App() {
     setIsDragging(false);
   }, []);
 
-  const handleFileInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) handleFile(file);
-  }, [handleFile]);
-
   const handleSanitize = useCallback(async () => {
     if (!uploadResult) return;
     try {
-      await downloadSanitized(uploadResult.job_id, uploadResult.filename);
+      // Calculate confirmed findings (ALL - IGNORED)
+      const confirmedIds = findings
+        .filter(f => !ignoredFindingIds.has(f.id))
+        .map(f => f.id);
+
+      await downloadSanitized(uploadResult.job_id, uploadResult.filename, confirmedIds);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Sanitization failed');
     }
-  }, [uploadResult]);
+  }, [uploadResult, findings, ignoredFindingIds]);
 
   const resetState = () => {
     setUploadResult(null);
     setAnalysis(null);
     setError(null);
+    resetStore();
+  };
+
+  // Construct PDF URL
+  // In a real app we might need a signed URL or blob. 
+  // For now, assume backend serves it or we can construct it if we had a /documents/{id}/content endpoint.
+  // Wait, we don't have a direct "get content" endpoint in api.ts?
+  // We accepted "file" in upload.
+  // We can use the /jobs/{id}/sanitize endpoint to get content? No that redacts.
+  // I need to add an endpoint to serve the ORIGINAL file or just use `URL.createObjectURL(file)` if we still have the file object?
+  // We lost the file object in state.
+  // But for the prototype, maybe we keep the file object in state or URL.createObjectURL right after upload?
+  // Re-architecting slightly: keep the file object URL to render in Viewer.
+
+  // FIX: Let's store the object URL when uploading.
+  const [fileUrl, setFileUrl] = useState<string | null>(null);
+
+  // Wrap handleFile to save URL
+  const onFileSelect = (file: File) => {
+    const url = URL.createObjectURL(file);
+    setFileUrl(url);
+    handleFile(file);
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 text-white">
+    <div className="min-h-screen bg-slate-900 text-white flex flex-col">
       {/* Header */}
-      <header className="border-b border-slate-700 bg-slate-900/50 backdrop-blur">
-        <div className="max-w-6xl mx-auto px-6 py-4">
-          <h1 className="text-2xl font-bold">
-            <span className="text-emerald-400">Clarity</span>Check
-          </h1>
-          <p className="text-slate-400 text-sm">AI Trap Detection & Removal</p>
+      <header className="border-b border-slate-700 bg-slate-900/50 backdrop-blur shrink-0 z-20">
+        <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
+          <div className="flex items-center gap-4">
+            <h1 className="text-2xl font-bold">
+              <span className="text-emerald-400">Clarity</span>Check
+            </h1>
+            {analysis && (
+              <span className={`px-3 py-1 rounded text-sm font-bold bg-slate-800 border border-slate-700`}>
+                Score: {analysis.risk_score}
+              </span>
+            )}
+          </div>
+          {analysis && (
+            <button onClick={resetState} className="text-slate-400 hover:text-white">New Scan</button>
+          )}
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-6 py-8">
+      <main className="flex-1 overflow-hidden relative">
         {/* Upload Area */}
         {!analysis && (
-          <div
-            className={`border-2 border-dashed rounded-xl p-12 text-center transition-all ${isDragging
-              ? 'border-emerald-400 bg-emerald-400/10'
-              : 'border-slate-600 hover:border-slate-500'
-              }`}
-            onDrop={handleDrop}
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-          >
-            {isLoading ? (
-              <div className="space-y-4">
-                <div className="animate-spin w-12 h-12 border-4 border-emerald-400 border-t-transparent rounded-full mx-auto" />
-                <p className="text-slate-300">{statusMessage || "Processing..."}</p>
+          <div className="max-w-2xl mx-auto mt-20 px-6">
+            <div
+              className={`border-2 border-dashed rounded-xl p-12 text-center transition-all ${isDragging
+                ? 'border-emerald-400 bg-emerald-400/10'
+                : 'border-slate-600 hover:border-slate-500'
+                }`}
+              onDrop={handleDrop}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+            >
+              {isLoading ? (
+                <div className="space-y-4">
+                  <div className="animate-spin w-12 h-12 border-4 border-emerald-400 border-t-transparent rounded-full mx-auto" />
+                  <p className="text-slate-300">{statusMessage || "Processing..."}</p>
+                </div>
+              ) : (
+                <>
+                  <div className="text-6xl mb-4">📄</div>
+                  <p className="text-xl mb-2">Drop your PDF here</p>
+                  <p className="text-slate-400 mb-4">or click to browse</p>
+                  <input
+                    type="file"
+                    accept=".pdf"
+                    onChange={(e) => e.target.files?.[0] && onFileSelect(e.target.files[0])}
+                    className="hidden"
+                    id="file-input"
+                  />
+                  <label
+                    htmlFor="file-input"
+                    className="inline-block px-6 py-3 bg-emerald-500 hover:bg-emerald-600 rounded-lg cursor-pointer transition-colors font-medium"
+                  >
+                    Select PDF
+                  </label>
+                </>
+              )}
+            </div>
+            {error && (
+              <div className="mt-6 p-4 bg-red-500/20 border border-red-500 rounded-lg text-red-300 text-center">
+                {error}
               </div>
-            ) : (
-              <>
-                <div className="text-6xl mb-4">📄</div>
-                <p className="text-xl mb-2">Drop your PDF here</p>
-                <p className="text-slate-400 mb-4">or click to browse</p>
-                <input
-                  type="file"
-                  accept=".pdf"
-                  onChange={handleFileInput}
-                  className="hidden"
-                  id="file-input"
-                />
-                <label
-                  htmlFor="file-input"
-                  className="inline-block px-6 py-3 bg-emerald-500 hover:bg-emerald-600 rounded-lg cursor-pointer transition-colors font-medium"
-                >
-                  Select PDF
-                </label>
-              </>
             )}
           </div>
         )}
 
-        {/* Error */}
-        {error && (
-          <div className="mt-6 p-4 bg-red-500/20 border border-red-500 rounded-lg text-red-300">
-            {error}
-          </div>
-        )}
-
-        {/* Results */}
-        {analysis && uploadResult && (
-          <div className="space-y-6">
-            {/* Risk Score Card */}
-            <div className={`rounded-xl p-6 ${getRiskBg(analysis.risk_level)}`}>
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-xl font-semibold mb-1">{analysis.filename}</h2>
-                  <p className="text-slate-300">{analysis.total_pages} pages scanned</p>
-                </div>
-                <div className="text-right">
-                  <div className="text-4xl font-bold">{analysis.risk_score}</div>
-                  <div className={`text-lg font-semibold ${getRiskColor(analysis.risk_level)}`}>
-                    {analysis.risk_level}
-                  </div>
-                </div>
-              </div>
+        {/* Interactive Workspace */}
+        {analysis && uploadResult && fileUrl && (
+          <div className="flex h-full">
+            {/* Main Viewer Area */}
+            <div className="flex-1 bg-slate-900/50 p-6 overflow-auto flex justify-center">
+              <PDFViewer fileUrl={fileUrl} />
             </div>
 
-            {/* Summary */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {Object.entries(analysis.summary_by_type).map(([type, count]) => (
-                <div key={type} className="bg-slate-800 rounded-lg p-4">
-                  <div className="text-3xl font-bold text-emerald-400">{count}</div>
-                  <div className="text-slate-300 capitalize">{type} trap{count !== 1 ? 's' : ''}</div>
-                </div>
-              ))}
-            </div>
-
-            {/* Findings List */}
-            <div className="bg-slate-800 rounded-xl overflow-hidden">
-              <div className="px-6 py-4 border-b border-slate-700">
-                <h3 className="text-lg font-semibold">Hidden Content Found</h3>
-              </div>
-              <div className="divide-y divide-slate-700">
-                {analysis.findings.map((finding, idx) => (
-                  <FindingRow key={idx} finding={finding} />
-                ))}
-              </div>
-            </div>
-
-            {/* Actions */}
-            <div className="flex gap-4">
-              <button
-                onClick={handleSanitize}
-                className="flex-1 py-4 bg-emerald-500 hover:bg-emerald-600 rounded-xl font-semibold text-lg transition-colors"
-              >
-                ✨ Download Sanitized PDF
-              </button>
-              <button
-                onClick={resetState}
-                className="px-6 py-4 bg-slate-700 hover:bg-slate-600 rounded-xl font-semibold transition-colors"
-              >
-                Scan Another
-              </button>
-            </div>
+            {/* Sidebar */}
+            <Sidebar
+              onSanitize={handleSanitize}
+              onReset={() => {
+                // Logic to toggle all? Or just reset to "select all"?
+                // For now, toggle all ignored?
+                // Let's iterate findings.
+                // Actually store.reset clears findings. We want to clear IGNORED list.
+                // I need to add a clearIgnored() action to store? 
+                // Or just iterate:
+                // But store provides reset() which wipes everything.
+                // For now I'll just skip this button logic or implement simple "Reset Selection" logic manually if needed.
+                // Let's assume onReset resets the "Ignored" set to empty (Select All).
+                // I will implement a store action for this later if needed, or loop.
+                // Actually, findingStore has reset() which clears findings too.
+                // I should probably rely on manual toggling for now.
+                // Or use a hack:
+                // resetStore(); setFindings(findings); // simple reset
+                resetStore();
+                setFindings(findings);
+              }}
+            />
           </div>
         )}
       </main>
     </div>
   );
-}
-
-function FindingRow({ finding }: { finding: Finding }) {
-  const [expanded, setExpanded] = useState(false);
-
-  return (
-    <div className="px-6 py-4">
-      <div
-        className="flex items-center gap-4 cursor-pointer"
-        onClick={() => setExpanded(!expanded)}
-      >
-        <div className={`w-3 h-3 rounded-full ${getTrapColor(finding.trap_type)}`} />
-        <div className="flex-1">
-          <div className="flex items-center gap-2">
-            <span className="font-medium capitalize">{finding.trap_type}</span>
-            <span className="text-slate-500">•</span>
-            <span className="text-slate-400">Page {finding.page}</span>
-            <span className={`px-2 py-0.5 rounded text-xs ${getImpactBadge(finding.impact)}`}>
-              {finding.impact}
-            </span>
-          </div>
-          <p className="text-slate-400 text-sm truncate">{finding.decoded_text}</p>
-        </div>
-        <div className="text-slate-500">{expanded ? '▼' : '▶'}</div>
-      </div>
-
-      {expanded && (
-        <div className="mt-4 ml-7 space-y-2 text-sm">
-          <div>
-            <span className="text-slate-500">Hidden text:</span>
-            <p className="text-slate-300 bg-slate-900 p-2 rounded mt-1 font-mono text-xs">
-              {finding.hidden_text}
-            </p>
-          </div>
-          <div>
-            <span className="text-slate-500">Decoded:</span>
-            <p className="text-emerald-300 bg-slate-900 p-2 rounded mt-1">
-              {finding.decoded_text}
-            </p>
-          </div>
-          <p className="text-amber-300">{finding.recommendation}</p>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function getRiskBg(level: string): string {
-  switch (level) {
-    case 'CRITICAL': return 'bg-red-900/50 border border-red-500';
-    case 'HIGH': return 'bg-orange-900/50 border border-orange-500';
-    case 'MEDIUM': return 'bg-yellow-900/50 border border-yellow-500';
-    case 'LOW': return 'bg-blue-900/50 border border-blue-500';
-    default: return 'bg-emerald-900/50 border border-emerald-500';
-  }
-}
-
-function getRiskColor(level: string): string {
-  switch (level) {
-    case 'CRITICAL': return 'text-red-400';
-    case 'HIGH': return 'text-orange-400';
-    case 'MEDIUM': return 'text-yellow-400';
-    case 'LOW': return 'text-blue-400';
-    default: return 'text-emerald-400';
-  }
-}
-
-function getTrapColor(type: string): string {
-  switch (type) {
-    case 'instruction': return 'bg-red-500';
-    case 'canary': return 'bg-yellow-500';
-    case 'watermark': return 'bg-purple-500';
-    case 'obfuscation': return 'bg-blue-500';
-    default: return 'bg-slate-500';
-  }
-}
-
-function getImpactBadge(impact: string): string {
-  switch (impact) {
-    case 'critical': return 'bg-red-500/30 text-red-300';
-    case 'high': return 'bg-orange-500/30 text-orange-300';
-    case 'medium': return 'bg-yellow-500/30 text-yellow-300';
-    case 'low': return 'bg-blue-500/30 text-blue-300';
-    default: return 'bg-slate-500/30 text-slate-300';
-  }
 }
 
 export default App;

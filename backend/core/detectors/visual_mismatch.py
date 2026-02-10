@@ -120,7 +120,13 @@ class VisualMismatchDetector(BaseDetector):
                              findings.append(Finding(
                                 detector=self.name,
                                 severity=self.severity,
-                                location=Location(page=page_num+1, x=bbox.x0, y=bbox.y0),
+                                location=Location(
+                                    page=page_num+1, 
+                                    x=bbox.x0, 
+                                    y=bbox.y0,
+                                    width=bbox.width,
+                                    height=bbox.height
+                                ),
                                 content="Visually Invisible Text",
                                 context=text[:50],
                                 explanation="Text is present in code but renders as a uniform color block (invisible) to the user."

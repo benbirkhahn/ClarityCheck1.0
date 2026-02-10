@@ -16,6 +16,7 @@ from backend.core.models import (
     JobStatus, Report, Finding, Location, Severity,
     DBJob, DBFinding
 )
+from pydantic import BaseModel
 from backend.core.analyzer import AnalyzedFinding, TrapType, TrapImpact, TrapAnalysis
 from backend.core.database import get_session
 # from backend.workers.tasks import analyze_document_task
@@ -198,7 +199,12 @@ async def get_analysis(job_id: str, session: AsyncSession = Depends(get_session)
         "summary_by_type": summary,
         "findings": [
             {
+                "id": f.original.id,
                 "page": f.original.location.page,
+                "x": f.original.location.x,
+                "y": f.original.location.y,
+                "width": f.original.location.width,
+                "height": f.original.location.height,
                 "trap_type": f.trap_type.value,
                 "impact": f.impact.value,
                 "hidden_text": f.original.context,
@@ -212,9 +218,14 @@ async def get_analysis(job_id: str, session: AsyncSession = Depends(get_session)
     }
 
 
-@router.get("/jobs/{job_id}/sanitize")
+
+class SanitizeRequest(BaseModel):
+    confirmed_finding_ids: Optional[List[str]] = None
+
+@router.post("/jobs/{job_id}/sanitize")
 async def sanitize_document(
     job_id: str,
+    request: SanitizeRequest,
     session: AsyncSession = Depends(get_session)
 ):
     """
@@ -243,7 +254,16 @@ async def sanitize_document(
     
     # Reconstruct Engine Report (Simplified)
     findings = []
+    
+    # FILTER: Only include findings that are in the confirmed list
+    # If list is None (legacy/default), include ALL findings (current behavior)
+    confirmed_ids = set(request.confirmed_finding_ids) if request.confirmed_finding_ids is not None else None
+    
     for dbf in job.findings:
+        # Skip if we have a confirmation list and this finding isn't in it
+        if confirmed_ids is not None and str(dbf.id) not in confirmed_ids:
+            continue
+            
         findings.append(Finding(
             id=str(dbf.id),
             detector=dbf.detector,

@@ -85,11 +85,13 @@ class SuspiciousSpacingDetector(BaseDetector):
                         findings.append(Finding(
                             detector=self.name,
                             severity=Severity.MEDIUM,
-                            location=Location(
-                                page=page_num + 1,
-                                x=bbox[0],
-                                y=bbox[1],
-                            ),
+                                location=Location(
+                                    page=page_num + 1,
+                                    x=bbox[0],
+                                    y=bbox[1],
+                                    width=bbox[2]-bbox[0],
+                                    height=bbox[3]-bbox[1]
+                                ),
                             content="Unusual word spacing",
                             context=text[:100] + ("..." if len(text) > 100 else ""),
                             explanation="Text contains excessive spacing between words, which may indicate obfuscation attempts."
