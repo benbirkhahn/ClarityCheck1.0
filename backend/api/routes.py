@@ -29,7 +29,7 @@ UPLOAD_DIR.mkdir(exist_ok=True)
 @router.post("/documents/upload")
 async def upload_document(
     background_tasks: BackgroundTasks,
-    file: UploadFile = File(...),
+    file: UploadFile = File(..., description="PDF file (max 10MB)"),
     session: AsyncSession = Depends(get_session)
 ):
     """Upload a PDF for analysis (Async)."""
@@ -43,6 +43,14 @@ async def upload_document(
     await session.refresh(job)
     
     try:
+        # Validate file size (10MB limit)
+        file.file.seek(0, 2)  # Seek to end
+        file_size = file.file.tell()
+        file.file.seek(0)  # Reset to beginning
+        
+        if file_size > 10_000_000:  # 10MB
+            raise HTTPException(status_code=413, detail="File too large. Maximum size is 10MB")
+        
         # Save file to disk
         file_path = UPLOAD_DIR / f"{job.id}.pdf"
         with open(file_path, "wb") as buffer:

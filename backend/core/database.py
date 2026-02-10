@@ -18,8 +18,19 @@ if "asyncpg" in DATABASE_URL:
 else:
     SYNC_DATABASE_URL = DATABASE_URL
 
-engine = create_async_engine(DATABASE_URL, echo=settings.DEBUG, future=True)
-sync_engine = create_engine(SYNC_DATABASE_URL, echo=settings.DEBUG)
+engine = create_async_engine(
+    DATABASE_URL, 
+    echo=settings.DEBUG, 
+    future=True,
+    pool_size=5,
+    max_overflow=0
+)
+sync_engine = create_engine(
+    SYNC_DATABASE_URL, 
+    echo=settings.DEBUG,
+    pool_size=5,
+    max_overflow=0
+)
 
 async def init_db():
     async with engine.begin() as conn:
