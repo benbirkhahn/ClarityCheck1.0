@@ -13,8 +13,13 @@ if DATABASE_URL.startswith("postgres://"):
 elif DATABASE_URL.startswith("postgresql://") and "+asyncpg" not in DATABASE_URL:
     DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://", 1)
 
+if "asyncpg" in DATABASE_URL:
+    SYNC_DATABASE_URL = DATABASE_URL.replace("+asyncpg", "+psycopg2")
+else:
+    SYNC_DATABASE_URL = DATABASE_URL
+
 engine = create_async_engine(DATABASE_URL, echo=settings.DEBUG, future=True)
-sync_engine = create_engine(DATABASE_URL.replace("+aiosqlite", ""), echo=settings.DEBUG)
+sync_engine = create_engine(SYNC_DATABASE_URL, echo=settings.DEBUG)
 
 async def init_db():
     async with engine.begin() as conn:
