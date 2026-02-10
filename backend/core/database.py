@@ -8,6 +8,10 @@ from sqlalchemy.orm import sessionmaker
 from backend.core.config import settings
 
 DATABASE_URL = settings.DATABASE_URL
+if DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql+asyncpg://", 1)
+elif DATABASE_URL.startswith("postgresql://") and "+asyncpg" not in DATABASE_URL:
+    DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://", 1)
 
 engine = create_async_engine(DATABASE_URL, echo=settings.DEBUG, future=True)
 sync_engine = create_engine(DATABASE_URL.replace("+aiosqlite", ""), echo=settings.DEBUG)
