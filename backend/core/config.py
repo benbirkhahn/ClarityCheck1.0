@@ -1,5 +1,5 @@
 from pydantic_settings import BaseSettings
-from typing import List, Union
+from typing import List, Union, Optional
 from pydantic import field_validator
 
 class Settings(BaseSettings):
@@ -19,6 +19,12 @@ class Settings(BaseSettings):
     # Security / CORS
     # In production, this should be a comma-separated list of allowed domains
     CORS_ORIGINS: Union[List[str], str] = ["http://localhost:3000", "http://localhost:5173"]
+
+    # LLM-Powered Detection
+    LLM_DETECTOR_ENABLED: bool = False
+    GEMINI_API_KEY: Optional[str] = None
+    LLM_MODEL: str = "gemini-2.0-flash-exp"
+
 
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod

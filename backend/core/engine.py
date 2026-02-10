@@ -94,6 +94,21 @@ class DetectionEngine:
                 except Exception as e:
                     print(f"Error in {detector.name}: {e}")
         
+        # Optional: LLM-powered semantic refinement
+        from backend.core.config import settings
+        if settings.LLM_DETECTOR_ENABLED and settings.GEMINI_API_KEY:
+            try:
+                from backend.core.detectors.llm_detector import LLMDetector
+                llm_detector = LLMDetector(
+                    api_key=settings.GEMINI_API_KEY,
+                    model=settings.LLM_MODEL
+                )
+                findings = llm_detector.refine_findings(findings)
+            except Exception as e:
+                # Don't fail the entire analysis if LLM fails
+                import logging
+                logging.getLogger(__name__).warning(f"LLM detector failed: {e}")
+        
         findings.sort(key=lambda f: (f.location.page, f.location.y or 0))
         return findings
 
