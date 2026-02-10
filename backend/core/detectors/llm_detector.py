@@ -212,8 +212,8 @@ Respond ONLY with valid JSON in this exact format (no markdown, no code blocks):
                 "visual_properties": {
                     "x": finding.location.x,
                     "y": finding.location.y,
-                    "width": finding.width,
-                    "height": finding.height
+                    "width": finding.location.width,
+                    "height": finding.location.height
                 }
             }
             
