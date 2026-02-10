@@ -7,6 +7,12 @@ Takes a PDF and removes/neutralizes hidden content identified by the detection e
 import fitz  # PyMuPDF
 from typing import Optional
 
+import logging
+
+# Configure logger
+schema_logger = logging.getLogger("sanitizer")
+schema_logger.setLevel(logging.INFO)
+
 from backend.core.models import Report, Finding
 from backend.core.analyzer import TrapAnalysis, TrapType
 
@@ -107,6 +113,8 @@ def _redact_hidden_text(page: fitz.Page, finding: Finding):
     
     redact_rects = []
     
+    schema_logger.info(f"Redacting hidden text on page. Findings: {len(redact_rects)} candidates so far. Location: {x},{y}")
+
     for block in blocks:
         if block.get("type") != 0:
             continue
@@ -122,29 +130,46 @@ def _redact_hidden_text(page: fitz.Page, finding: Finding):
                     rect = fitz.Rect(bbox)
                     text = span.get("text", "") # Ensure text is captured
                     redact_rects.append((rect, text))
+                    schema_logger.info(f"Found match by coordinate: {text} at {rect}")
                     
                 # Also check by text content
                 text = span.get("text", "")
                 color = span.get("color", 0)
                 size = span.get("size", 12)
                 
-                # Hidden if: white color (16777215 = 0xFFFFFF) or tiny size
-                is_white = color == 16777215 or color == 0xFFFFFF
+                # Hidden if: 
+                # 1. White color: 0xFFFFFF (16777215) OR very close to white (> 0xFEFEFE)
+                # 2. Variable Type handling for color (int vs float)
+                is_white = False
+                if isinstance(color, int):
+                    is_white = color > 16711422 # 0xFEFEFE
+                elif isinstance(color, (float, tuple, list)):
+                    # Handle float colors (0.0-1.0) - if all components > 0.99
+                    if isinstance(color, float):
+                        is_white = color > 0.99
+                    else:
+                        is_white = all(c > 0.99 for c in color)
+                
                 is_tiny = size < 4
                 
                 if (is_white or is_tiny) and text.strip():
                     rect = fitz.Rect(bbox)
                     redact_rects.append((rect, text))
+                    schema_logger.info(f"Found match by heuristic (white/tiny): '{text}' Color: {color} Size: {size}")
 
     # FALLBACK: If we haven't found a match by coordinates or heuristic,
     # search for the EXACT text content in the finding.
     # This handles coordinate drift between detection engine and PyMuPDF.
-    if not redact_rects and finding.content and len(finding.content.strip()) > 3:
+    if finding.content and len(finding.content.strip()) > 3:
         # Search for the text on the page
         text_instances = page.search_for(finding.content)
-        for rect in text_instances:
-            # Add all instances of this exact text
-            redact_rects.append((rect, finding.content))
+        if text_instances:
+            schema_logger.info(f"Fallback Search: Found {len(text_instances)} instances of '{finding.content}'")
+            for rect in text_instances:
+                # Add all instances of this exact text
+                redact_rects.append((rect, finding.content))
+        else:
+             schema_logger.warning(f"Fallback Search: Could NOT find '{finding.content}' on page!")
 
     
     # Apply redactions
