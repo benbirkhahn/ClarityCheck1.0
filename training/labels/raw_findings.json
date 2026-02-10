@@ -1,0 +1,188 @@
+{
+  "CS 171-HW04 copy.pdf": [
+    {
+      "text": "\u2022",
+      "page": 4,
+      "x": 72.0,
+      "y": 87.0,
+      "width": 5.5,
+      "height": 14.7,
+      "size": 12.0,
+      "color": "0xffffff",
+      "reasons": {
+        "white_text": true,
+        "tiny_text": false,
+        "off_screen": false
+      }
+    },
+    {
+      "text": "T h e  c o d e  f o r  t h e  f u n c t i o n s  s h o u l d  u s e  l i s t s  a n d  l i s t  c o m p r e h e n s i o n  a s  n e e d e d .",
+      "page": 4,
+      "x": 72.0,
+      "y": 102.5,
+      "width": 70.3,
+      "height": 1.0,
+      "size": 1.0,
+      "color": "0xffffff",
+      "reasons": {
+        "white_text": true,
+        "tiny_text": true,
+        "off_screen": false
+      }
+    }
+  ],
+  "STAT202 Homework Assignment 2_2026 (1) copy.pdf": [
+    {
+      "text": "to .0008",
+      "page": 1,
+      "x": 357.2,
+      "y": 245.8,
+      "width": 3.4,
+      "height": 1.1,
+      "size": 1.0,
+      "color": "0xffffff",
+      "reasons": {
+        "white_text": true,
+        "tiny_text": true,
+        "off_screen": false
+      }
+    },
+    {
+      "text": "z",
+      "page": 1,
+      "x": 483.8,
+      "y": 245.8,
+      "width": 0.4,
+      "height": 1.1,
+      "size": 1.0,
+      "color": "0xffffff",
+      "reasons": {
+        "white_text": true,
+        "tiny_text": true,
+        "off_screen": false
+      }
+    },
+    {
+      "text": "t",
+      "page": 1,
+      "x": 269.0,
+      "y": 452.2,
+      "width": 0.5,
+      "height": 1.1,
+      "size": 1.0,
+      "color": "0xffffff",
+      "reasons": {
+        "white_text": true,
+        "tiny_text": true,
+        "off_screen": false
+      }
+    },
+    {
+      "text": "unpaired",
+      "page": 1,
+      "x": 287.5,
+      "y": 452.2,
+      "width": 3.7,
+      "height": 1.1,
+      "size": 1.0,
+      "color": "0xffffff",
+      "reasons": {
+        "white_text": true,
+        "tiny_text": true,
+        "off_screen": false
+      }
+    },
+    {
+      "text": "9.",
+      "page": 1,
+      "x": 223.7,
+      "y": 608.0,
+      "width": 0.7,
+      "height": 1.1,
+      "size": 1.0,
+      "color": "0xffffff",
+      "reasons": {
+        "white_text": true,
+        "tiny_text": true,
+        "off_screen": false
+      }
+    },
+    {
+      "text": "g",
+      "page": 2,
+      "x": 536.0,
+      "y": 196.8,
+      "width": 0.7,
+      "height": 1.1,
+      "size": 1.0,
+      "color": "0xffffff",
+      "reasons": {
+        "white_text": true,
+        "tiny_text": true,
+        "off_screen": false
+      }
+    }
+  ],
+  "Week 5 Lab Instructions copy.pdf": [
+    {
+      "text": "Your solution must demonstrate use of list comprehensions.",
+      "page": 2,
+      "x": 72.0,
+      "y": 208.9,
+      "width": 26.0,
+      "height": 1.2,
+      "size": 1.0,
+      "color": "0xffffff",
+      "reasons": {
+        "white_text": true,
+        "tiny_text": true,
+        "off_screen": false
+      }
+    },
+    {
+      "text": "Rather than reading from the keyboard in main, your solution should implement a function getIntFromKeyboard() which will implement the input logic.",
+      "page": 2,
+      "x": 72.0,
+      "y": 297.9,
+      "width": 64.1,
+      "height": 1.2,
+      "size": 1.0,
+      "color": "0xffffff",
+      "reasons": {
+        "white_text": true,
+        "tiny_text": true,
+        "off_screen": false
+      }
+    },
+    {
+      "text": "While processing the lists, keep track of the number of apples that hit the ground in a variable called badApples and count the number of apples that hit the house in a variable called goodApples. Tra",
+      "page": 4,
+      "x": 72.0,
+      "y": 189.2,
+      "width": 154.8,
+      "height": 1.2,
+      "size": 1.0,
+      "color": "0xffffff",
+      "reasons": {
+        "white_text": true,
+        "tiny_text": true,
+        "off_screen": false
+      }
+    },
+    {
+      "text": "Your solution should call the variable used to accumulate results accumulatorList",
+      "page": 5,
+      "x": 72.0,
+      "y": 413.8,
+      "width": 35.2,
+      "height": 1.2,
+      "size": 1.0,
+      "color": "0xffffff",
+      "reasons": {
+        "white_text": true,
+        "tiny_text": true,
+        "off_screen": false
+      }
+    }
+  ]
+}
