@@ -81,6 +81,7 @@ class LayeredTextDetector(BaseDetector):
             text_rect = tb["rect"]
             text = tb["text"]
             
+            # Check overlap with images
             for img_rect in image_rects:
                 overlap = self._calculate_overlap(text_rect, img_rect)
                 
@@ -98,6 +99,36 @@ class LayeredTextDetector(BaseDetector):
                         explanation="Text appears to be positioned under an image. This text is invisible to users but readable by AI/screen readers."
                     ))
                     break  # Don't report same text multiple times
+            
+            # Check overlap with filled drawings (e.g. white boxes hiding text)
+            # Only consider FILLED drawings
+            drawings = page.get_drawings()
+            for draw in drawings:
+                # Type 'f' or 'fs' means filled
+                if 'f' in draw.get("type", ""):
+                    draw_rect = draw["rect"]
+                    
+                    # Skip if drawing is tiny (likely noise or bullet point)
+                    if draw_rect.width < 5 or draw_rect.height < 5:
+                        continue
+                        
+                    overlap = self._calculate_overlap(text_rect, draw_rect)
+                    
+                    if overlap > 0.9: # High overlap required for "covered by box"
+                         findings.append(Finding(
+                            detector=self.name,
+                            severity=self.severity,
+                            location=Location(
+                                page=page_num + 1,
+                                x=text_rect.x0,
+                                y=text_rect.y0,
+                            ),
+                            content=f"Text covered by shape ({overlap*100:.0f}% overlap)",
+                            context=text[:100] + ("..." if len(text) > 100 else ""),
+                            explanation="Text appears to be covered by a filled shape (e.g., a white box). This is a common technique to hide instructions."
+                        ))
+                         break
+
         
         return findings
     

@@ -86,6 +86,9 @@ def _sanitize_page(page: fitz.Page, findings: list[Finding]):
         
         elif detector == "InvisibleRenderDetector":
             _redact_hidden_text(page, finding)
+
+        elif detector == "VisualMismatchDetector":
+            _redact_hidden_text(page, finding)
             
         # SuspiciousSpacingDetector - User feedback indicates this is often valid text.
         # We will Report it, but NOT Redact it.
@@ -186,7 +189,7 @@ def _redact_hidden_text(page: fitz.Page, finding: Finding):
             # SAFETY OVERRIDE: If it's definitely a trap (White/Tiny/Layered), NUKE IT regardless of overlap.
             # The "Do No Harm" logic is mainly for "Suspicious Spacing" or "Ambiguous" detections.
             is_high_confidence_trap = (
-                finding.detector in ["MatchingColorDetector", "TinyTextDetector", "LayeredTextDetector", "InvisibleRenderDetector"]
+                finding.detector in ["MatchingColorDetector", "TinyTextDetector", "LayeredTextDetector", "InvisibleRenderDetector", "VisualMismatchDetector"]
                 # We can't access is_white/is_tiny here easily as they were local to the loop above.
                 # But finding.detector is a good proxy.
             )
@@ -302,7 +305,7 @@ def get_sanitization_preview(
         if finding.detector in ["MatchingColorDetector", "TinyTextDetector", 
                                  "LowContrastDetector", "OffScreenTextDetector",
                                  "SuspiciousSpacingDetector", "InvisibleRenderDetector",
-                                 "LayeredTextDetector"]:
+                                 "LayeredTextDetector", "VisualMismatchDetector"]:
             action = "REMOVE - Hidden text will be redacted"
         
         elif finding.detector == "HiddenAnnotationDetector":

@@ -15,6 +15,7 @@ from backend.core.detectors.invisible_render import InvisibleRenderDetector
 from backend.core.detectors.low_contrast import LowContrastDetector
 from backend.core.detectors.suspicious_spacing import SuspiciousSpacingDetector
 from backend.core.detectors.layered_text import LayeredTextDetector
+from backend.core.detectors.visual_mismatch import VisualMismatchDetector
 
 
 class DetectionEngine:
@@ -36,6 +37,7 @@ class DetectionEngine:
         self.register(LowContrastDetector())
         self.register(SuspiciousSpacingDetector())
         self.register(LayeredTextDetector())
+        self.register(VisualMismatchDetector())
     
     def register(self, detector: BaseDetector):
         """Register a detector with the engine."""

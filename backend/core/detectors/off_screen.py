@@ -37,6 +37,7 @@ class OffScreenTextDetector(BaseDetector):
         """Analyze a single page for off-screen text."""
         findings = []
         
+        # Standard dict is sufficient as rawdict/xml also fail for extreme off-screen text
         blocks = page.get_text("dict")["blocks"]
         
         for block in blocks:
@@ -46,30 +47,30 @@ class OffScreenTextDetector(BaseDetector):
             for line in block.get("lines", []):
                 for span in line.get("spans", []):
                     text = span.get("text", "").strip()
+                    
                     if not text:
                         continue
-                    
+                     
                     bbox = span.get("bbox", (0, 0, 0, 0))
+                    if not bbox: continue
+                    
+                    x0, y0, x1, y1 = bbox
+                    if not bbox: continue
+                    
                     x0, y0, x1, y1 = bbox
                     
-                    # Check if text is outside page bounds
-                    issues = []
+                    # Simple robust check: Is it effectively off the page?
+                    # Using a generous margin (e.g. 50pts) to avoid false positives on bleed text
+                    margin = self.margin_threshold
                     
-                    if x1 < -self.margin_threshold:
-                        issues.append("far left of page")
-                    elif x0 > page_rect.width + self.margin_threshold:
-                        issues.append("far right of page")
+                    is_off_screen = (
+                        x1 < -margin or                 # Far Left
+                        x0 > page_rect.width + margin or # Far Right
+                        y1 < -margin or                 # Far Above
+                        y0 > page_rect.height + margin  # Far Below
+                    )
                     
-                    if y1 < -self.margin_threshold:
-                        issues.append("above page")
-                    elif y0 > page_rect.height + self.margin_threshold:
-                        issues.append("below page")
-                    
-                    # Also check for extremely negative positions (common trick)
-                    if x0 < -1000 or y0 < -1000:
-                        issues.append("positioned at extreme negative coordinates")
-                    
-                    if issues:
+                    if is_off_screen:
                         findings.append(Finding(
                             detector=self.name,
                             severity=self.severity,
@@ -78,9 +79,9 @@ class OffScreenTextDetector(BaseDetector):
                                 x=x0,
                                 y=y0,
                             ),
-                            content=f"Off-screen text ({', '.join(issues)})",
+                            content="Off-screen text",
                             context=text[:100] + ("..." if len(text) > 100 else ""),
-                            explanation=f"Text at position ({x0:.0f}, {y0:.0f}) is outside visible page area ({page_rect.width:.0f}x{page_rect.height:.0f}). Screen readers may still read this hidden content."
+                            explanation=f"Text at position ({x0:.0f}, {y0:.0f}) is outside visible page area. Logic: x1({x1}) < -{margin}"
                         ))
         
         return findings
