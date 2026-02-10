@@ -135,6 +135,17 @@ def _redact_hidden_text(page: fitz.Page, finding: Finding):
                 if (is_white or is_tiny) and text.strip():
                     rect = fitz.Rect(bbox)
                     redact_rects.append((rect, text))
+
+    # FALLBACK: If we haven't found a match by coordinates or heuristic,
+    # search for the EXACT text content in the finding.
+    # This handles coordinate drift between detection engine and PyMuPDF.
+    if not redact_rects and finding.content and len(finding.content.strip()) > 3:
+        # Search for the text on the page
+        text_instances = page.search_for(finding.content)
+        for rect in text_instances:
+            # Add all instances of this exact text
+            redact_rects.append((rect, finding.content))
+
     
     # Apply redactions
     for item in redact_rects:
