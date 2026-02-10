@@ -255,13 +255,13 @@ async def sanitize_document(
     # Reconstruct Engine Report (Simplified)
     findings = []
     
-    # FILTER: Only include findings that are in the confirmed list
-    # If list is None (legacy/default), include ALL findings (current behavior)
+    # FILTER: confirmed_finding_ids are findings to REMOVE
+    # Frontend sends IDs that are NOT ignored (i.e., should be removed)
     confirmed_ids = set(request.confirmed_finding_ids) if request.confirmed_finding_ids is not None else None
     
     for dbf in job.findings:
-        # Skip if we have a confirmation list and this finding isn't in it
-        if confirmed_ids is not None and str(dbf.id) not in confirmed_ids:
+        # Skip if this finding is in the confirmed-to-remove list
+        if confirmed_ids is not None and str(dbf.id) in confirmed_ids:
             continue
             
         findings.append(Finding(
