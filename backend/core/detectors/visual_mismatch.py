@@ -23,7 +23,7 @@ class VisualMismatchDetector(BaseDetector):
     name = "VisualMismatchDetector"
     description = "Detects text that is present in code but visually invisible"
     severity = Severity.HIGH
-    enabled = True
+    enabled = False  # Disabled: computationally expensive, high false positive rate
     
     def detect(self, doc: fitz.Document) -> list[Finding]:
         findings = []

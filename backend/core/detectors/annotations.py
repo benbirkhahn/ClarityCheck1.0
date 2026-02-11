@@ -12,7 +12,7 @@ class HiddenAnnotationDetector(BaseDetector):
     name = "HiddenAnnotationDetector"
     description = "Detects PDF annotations that may be read by assistive technology"
     severity = Severity.MEDIUM
-    enabled = True
+    enabled = False  # Disabled: rarely useful for homework traps
     
     # Annotation types that often contain hidden/problematic content
     SUSPICIOUS_TYPES = {

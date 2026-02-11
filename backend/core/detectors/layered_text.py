@@ -17,7 +17,7 @@ class LayeredTextDetector(BaseDetector):
     name = "LayeredTextDetector"
     description = "Detects text potentially hidden under images or other elements"
     severity = Severity.HIGH
-    enabled = True
+    enabled = False  # Disabled: complex edge cases, needs tuning
     
     def __init__(self, overlap_threshold: float = 0.5):
         """

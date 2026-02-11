@@ -35,7 +35,7 @@ class LowContrastDetector(BaseDetector):
     name = "LowContrastDetector"
     description = "Detects text with contrast too low to be easily readable"
     severity = Severity.MEDIUM
-    enabled = True
+    enabled = False  # Disabled: overlaps with MatchingColorDetector
     
     def __init__(self, min_contrast: float = 2.0, min_text_length: int = 5):
         """

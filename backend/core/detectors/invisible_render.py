@@ -18,7 +18,7 @@ class InvisibleRenderDetector(BaseDetector):
     name = "InvisibleRenderDetector"
     description = "Detects text with invisible rendering mode in PDF"
     severity = Severity.HIGH
-    enabled = True
+    enabled = False  # Disabled: overlaps with VisualMismatchDetector
     
     def detect(self, doc: fitz.Document) -> list[Finding]:
         """Scan for invisible text rendering."""
