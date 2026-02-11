@@ -12,7 +12,7 @@ class TinyTextDetector(BaseDetector):
     name = "TinyTextDetector"
     description = "Detects microscopic text that humans cannot read but screen readers will"
     severity = Severity.HIGH
-    enabled = True
+    enabled = False  # Disabled: creates duplicate findings with MatchingColorDetector on tiny white text
     
     def __init__(self, min_font_size: float = 3.0, min_text_length: int = 5):
         """
@@ -22,6 +22,15 @@ class TinyTextDetector(BaseDetector):
         """
         self.min_font_size = min_font_size
         self.min_text_length = min_text_length
+        
+        # Whitelist: Common formatting characters that are visible even when tiny
+        # (e.g., bullets, dashes, symbols used in layouts)
+        self.formatting_whitelist = {
+            '•', '·', '◦', '▪', '▫', '■', '□', '●', '○',  # Bullets
+            '-', '–', '—', '−',  # Dashes
+            '*', '+', '×', '÷', '=',  # Math symbols
+            '|', '/', '\\',  # Separators
+        }
     
     def detect(self, doc: fitz.Document) -> list[Finding]:
         """Scan for microscopic text."""
@@ -48,6 +57,10 @@ class TinyTextDetector(BaseDetector):
                 for span in line.get("spans", []):
                     text = span.get("text", "").strip()
                     if len(text) < self.min_text_length:
+                        continue
+                    
+                    # Skip formatting characters (visible bullets, symbols, etc.)
+                    if text in self.formatting_whitelist:
                         continue
                     
                     font_size = span.get("size", 12)
