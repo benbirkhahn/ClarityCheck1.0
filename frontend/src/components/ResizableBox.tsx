@@ -193,8 +193,8 @@ export default function ResizableBox({
 
             {/* Floating toolbar */}
             <div
-                className="absolute -bottom-14 left-0 flex gap-2 bg-slate-800 rounded-lg p-2 shadow-lg border border-slate-700"
-                style={{ pointerEvents: 'all' }}
+                className="absolute top-0 flex flex-col gap-2 bg-slate-800 rounded-lg p-2 shadow-lg border border-slate-700"
+                style={{ pointerEvents: 'all', left: '100%', marginLeft: '8px' }}
             >
                 <button
                     onClick={onSave}
