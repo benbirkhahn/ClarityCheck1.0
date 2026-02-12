@@ -12,9 +12,9 @@ class TinyTextDetector(BaseDetector):
     name = "TinyTextDetector"
     description = "Detects microscopic text that humans cannot read but screen readers will"
     severity = Severity.HIGH
-    enabled = False  # Disabled: creates duplicate findings with MatchingColorDetector on tiny white text
+    enabled = True  # Re-enabled: catches tiny text traps, duplicates merged by engine
     
-    def __init__(self, min_font_size: float = 3.0, min_text_length: int = 5):
+    def __init__(self, min_font_size: float = 3.0, min_text_length: int = 1):
         """
         Args:
             min_font_size: Text smaller than this (in points) is flagged

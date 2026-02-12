@@ -3,7 +3,7 @@
 from pathlib import Path
 import fitz  # PyMuPDF
 
-from backend.core.models import Report, Finding
+from backend.core.models import Report, Finding, Severity
 from backend.core.detectors.base import BaseDetector
 from backend.core.detectors.zero_width import ZeroWidthCharDetector
 from backend.core.detectors.matching_color import MatchingColorDetector
@@ -94,6 +94,9 @@ class DetectionEngine:
                 except Exception as e:
                     print(f"Error in {detector.name}: {e}")
         
+        # Deduplicate findings at same location
+        findings = self._deduplicate_findings(findings)
+        
         # Optional: LLM-powered semantic refinement
         from backend.core.config import settings
         if settings.LLM_DETECTOR_ENABLED and settings.GEMINI_API_KEY:
@@ -111,6 +114,46 @@ class DetectionEngine:
         
         findings.sort(key=lambda f: (f.location.page, f.location.y or 0))
         return findings
+    
+    def _deduplicate_findings(self, findings: list[Finding]) -> list[Finding]:
+        """Remove duplicate findings at the same location, keeping highest severity."""
+        from collections import defaultdict
+        
+        # Group by location (page, x, y within tolerance)
+        location_groups = defaultdict(list)
+        TOLERANCE = 2.0  # pixels
+        
+        for finding in findings:
+            loc = finding.location
+            key = (
+                loc.page,
+                round(loc.x / TOLERANCE) if loc.x else 0,
+                round(loc.y / TOLERANCE) if loc.y else 0,
+            )
+            location_groups[key].append(finding)
+        
+        # Keep highest severity from each location
+        deduped = []
+        severity_order = {Severity.HIGH: 3, Severity.MEDIUM: 2, Severity.LOW: 1}
+        
+        for group in location_groups.values():
+            if len(group) == 1:
+                deduped.append(group[0])
+            else:
+                # Merge detectors, keep highest severity
+                best = max(group, key=lambda f: severity_order.get(f.severity, 0))
+                
+                # Combine detector names
+                detector_names = sorted({f.detector for f in group})
+                best.detector = " + ".join(detector_names)
+                
+                # Note multiple detections in explanation
+                if len(detector_names) > 1:
+                    best.explanation += f" [Detected by: {', '.join(detector_names)}]"
+                
+                deduped.append(best)
+        
+        return deduped
 
 
 engine = DetectionEngine()
