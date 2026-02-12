@@ -1,15 +1,24 @@
-import { useFindingStore } from '../store/findingStore';
+import { useFindingStore, type ManualFinding } from '../store/findingStore';
 import type { Finding } from '../types';
 
 interface SidebarProps {
     onSanitize: () => void;
+    onStartDrawing?: () => void;
 }
 
-export default function Sidebar({ onSanitize }: SidebarProps) {
-    const { findings, isIgnored, toggleIgnored, invertSelection } = useFindingStore();
+export default function Sidebar({ onSanitize, onStartDrawing }: SidebarProps) {
+    const {
+        findings,
+        manualFindings,
+        isIgnored,
+        toggleIgnored,
+        invertSelection,
+        removeManualFinding
+    } = useFindingStore();
 
-    const toRemoveCount = findings.filter(f => !isIgnored(f.id)).length;
-    const toKeepCount = findings.filter(f => isIgnored(f.id)).length;
+    const allFindings = [...findings, ...manualFindings];
+    const toRemoveCount = allFindings.filter(f => !isIgnored(f.id)).length;
+    const toKeepCount = allFindings.filter(f => isIgnored(f.id)).length;
 
     return (
         <div className="w-96 bg-slate-800 border-l border-slate-700 flex flex-col h-full">
@@ -23,12 +32,22 @@ export default function Sidebar({ onSanitize }: SidebarProps) {
                         <strong>{toKeepCount}</strong> Will Keep
                     </div>
                 </div>
-                <button
-                    onClick={invertSelection}
-                    className="w-full px-3 py-1.5 bg-slate-700 hover:bg-slate-600 border border-slate-600 rounded text-sm text-white transition-colors"
-                >
-                    ⇄ Invert Selection
-                </button>
+                <div className="space-y-2">
+                    <button
+                        onClick={invertSelection}
+                        className="w-full px-3 py-1.5 bg-slate-700 hover:bg-slate-600 border border-slate-600 rounded text-sm text-white transition-colors"
+                    >
+                        ⇄ Invert Selection
+                    </button>
+                    {onStartDrawing && (
+                        <button
+                            onClick={onStartDrawing}
+                            className="w-full px-3 py-1.5 bg-blue-600 hover:bg-blue-700 border border-blue-500 rounded text-sm text-white transition-colors font-medium"
+                        >
+                            ➕ Add Manual Region
+                        </button>
+                    )}
+                </div>
                 <p className="text-xs text-slate-500 mt-2">Click any finding to toggle Keep/Remove</p>
             </div>
 
@@ -43,7 +62,18 @@ export default function Sidebar({ onSanitize }: SidebarProps) {
                     />
                 ))}
 
-                {findings.length === 0 && (
+                {manualFindings.map((finding, index) => (
+                    <ManualFindingCard
+                        key={finding.id}
+                        finding={finding}
+                        findingNumber={findings.length + index + 1}
+                        ignored={isIgnored(finding.id)}
+                        onToggle={() => toggleIgnored(finding.id)}
+                        onDelete={() => removeManualFinding(finding.id)}
+                    />
+                ))}
+
+                {allFindings.length === 0 && (
                     <div className="text-center text-slate-500 py-8">
                         No findings to review.
                     </div>
@@ -70,7 +100,7 @@ export default function Sidebar({ onSanitize }: SidebarProps) {
                     {toRemoveCount === 0 ? 'All findings will be kept' : `${toKeepCount} finding(s) will be preserved`}
                 </p>
             </div>
-        </div>
+        </div >
     );
 }
 
@@ -122,6 +152,73 @@ function FindingCard({ finding, findingNumber, ignored, onToggle }: {
 
             <div className="text-xs font-mono bg-slate-900 px-2 py-1 rounded text-emerald-400 truncate">
                 {finding.decoded_text || "Hidden Content"}
+            </div>
+        </div>
+    );
+}
+
+function ManualFindingCard({ finding, findingNumber, ignored, onToggle, onDelete }: {
+    finding: ManualFinding,
+    findingNumber: number,
+    ignored: boolean,
+    onToggle: () => void,
+    onDelete: () => void
+}) {
+    const { hoveredFindingId, setHoveredFinding } = useFindingStore();
+    const isHovered = hoveredFindingId === finding.id;
+
+    return (
+        <div
+            className={`
+                p-3 rounded-lg border transition-all cursor-pointer
+                ${ignored
+                    ? 'bg-slate-800 border-slate-700 opacity-80'
+                    : isHovered
+                        ? 'bg-slate-700 border-yellow-400 ring-2 ring-yellow-400/50'
+                        : 'bg-blue-700/30 border-blue-600 hover:border-blue-500/50'
+                }
+            `}
+            onClick={onToggle}
+            onMouseEnter={() => setHoveredFinding(finding.id)}
+            onMouseLeave={() => setHoveredFinding(null)}
+        >
+            <div className="flex justify-between items-start mb-2">
+                <div className="flex items-center gap-2">
+                    <span className={`
+                        text-xs font-bold px-2 py-1 rounded
+                        ${ignored ? 'bg-slate-600 text-white' : 'bg-blue-600 text-white'}
+                    `}>
+                        #{findingNumber}
+                    </span>
+                    <span className="text-xs text-blue-300 font-medium">📍 Manual</span>
+                    <span className="text-xs text-slate-400">Page {finding.page}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                    <div className={`
+                        flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded
+                        ${ignored ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}
+                    `}>
+                        {ignored ? '✓ KEEP' : '✗ REMOVE'}
+                    </div>
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onDelete();
+                        }}
+                        className="px-2 py-1 bg-red-600 hover:bg-red-700 rounded text-xs text-white transition-colors"
+                        title="Delete manual region"
+                    >
+                        🗑️
+                    </button>
+                </div>
+            </div>
+
+            <p className="text-xs text-slate-300 mb-2 leading-relaxed">
+                User-defined region for removal
+            </p>
+
+            <div className="text-xs font-mono bg-slate-900 px-2 py-1 rounded text-blue-400">
+                x: {Math.round(finding.x)}, y: {Math.round(finding.y)}, w: {Math.round(finding.width)}, h: {Math.round(finding.height)}
             </div>
         </div>
     );

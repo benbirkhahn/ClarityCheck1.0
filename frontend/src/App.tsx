@@ -12,11 +12,13 @@ function App() {
   const [uploadResult, setUploadResult] = useState<UploadResponse | null>(null);
   const [analysis, setAnalysis] = useState<AnalysisResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isDrawingMode, setIsDrawingMode] = useState(false);
 
   // Store actions
   const setFindings = useFindingStore(state => state.setFindings);
   const resetStore = useFindingStore(state => state.reset);
   const findings = useFindingStore(state => state.findings);
+  const manualFindings = useFindingStore(state => state.manualFindings);
   const ignoredFindingIds = useFindingStore(state => state.ignoredFindingIds);
 
   const handleFile = useCallback(async (file: File) => {
@@ -75,16 +77,31 @@ function App() {
   const handleSanitize = useCallback(async () => {
     if (!uploadResult) return;
     try {
+      // Combine auto findings + manual findings
+      const allFindings = [...findings, ...manualFindings];
+
       // Calculate confirmed findings (ALL - IGNORED)
-      const confirmedIds = findings
+      const confirmedIds = allFindings
         .filter(f => !ignoredFindingIds.has(f.id))
         .map(f => f.id);
 
-      await downloadSanitized(uploadResult.job_id, uploadResult.filename, confirmedIds);
+      // Get manual regions to send separately
+      const manualRegions = manualFindings
+        .filter(f => !ignoredFindingIds.has(f.id))
+        .map(f => ({
+          id: f.id,
+          page: f.page,
+          x: f.x,
+          y: f.y,
+          width: f.width,
+          height: f.height,
+        }));
+
+      await downloadSanitized(uploadResult.job_id, uploadResult.filename, confirmedIds, manualRegions);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Sanitization failed');
     }
-  }, [uploadResult, findings, ignoredFindingIds]);
+  }, [uploadResult, findings, manualFindings, ignoredFindingIds]);
 
   const resetState = () => {
     setUploadResult(null);
@@ -187,12 +204,17 @@ function App() {
           <div className="flex h-full">
             {/* Main Viewer Area */}
             <div className="flex-1 bg-slate-900/50 p-6 overflow-auto flex justify-center">
-              <PDFViewer fileUrl={fileUrl} />
+              <PDFViewer
+                fileUrl={fileUrl}
+                isDrawingMode={isDrawingMode}
+                onDrawingComplete={() => setIsDrawingMode(false)}
+              />
             </div>
 
             {/* Sidebar */}
             <Sidebar
               onSanitize={handleSanitize}
+              onStartDrawing={() => setIsDrawingMode(true)}
             />
           </div>
         )}

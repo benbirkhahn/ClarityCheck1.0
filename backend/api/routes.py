@@ -221,8 +221,17 @@ async def get_analysis(job_id: str, session: AsyncSession = Depends(get_session)
 
 
 
+class ManualRegion(BaseModel):
+    id: str
+    page: int
+    x: float
+    y: float
+    width: float
+    height: float
+
 class SanitizeRequest(BaseModel):
     confirmed_finding_ids: Optional[List[str]] = None
+    manual_regions: Optional[List[ManualRegion]] = None
 
 @router.post("/jobs/{job_id}/sanitize")
 async def sanitize_document(
@@ -276,12 +285,32 @@ async def sanitize_document(
                 y=dbf.y,
                 width=dbf.width,
                 height=dbf.height,
-                char_index=dbf.char_index
             ),
             content=dbf.content,
             context=dbf.context,
-            explanation=dbf.explanation
+            explanation=dbf.explanation,
+            decoded_text=dbf.decoded_text,
         ))
+    
+    # Add manual regions as findings
+    if request.manual_regions:
+        for region in request.manual_regions:
+            findings.append(Finding(
+                id=region.id,
+                detector='ManualSelection',
+                severity=Severity.HIGH,
+                location=Location(
+                    page=region.page,
+                    x=region.x,
+                    y=region.y,
+                    width=region.width,
+                    height=region.height,
+                ),
+                content='Manual selection',
+                context='User-defined region',
+                explanation='Manually selected region for removal',
+                decoded_text='',
+            ))
     
     report = Report(job_id=job.id, filename=job.filename, total_pages=0, findings=findings)
     

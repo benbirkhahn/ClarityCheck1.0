@@ -52,13 +52,21 @@ export async function getAnalysis(jobId: string): Promise<AnalysisResponse> {
   return response.json();
 }
 
-export async function downloadSanitized(jobId: string, filename: string, confirmedFindingIds?: string[]): Promise<void> {
+export async function downloadSanitized(
+  jobId: string,
+  filename: string,
+  confirmedFindingIds?: string[],
+  manualRegions?: Array<{ id: string, page: number, x: number, y: number, width: number, height: number }>
+): Promise<void> {
   const response = await fetch(`${API_BASE}/jobs/${jobId}/sanitize`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ confirmed_finding_ids: confirmedFindingIds }),
+    body: JSON.stringify({
+      confirmed_finding_ids: confirmedFindingIds,
+      manual_regions: manualRegions
+    }),
   });
 
   if (!response.ok) {
