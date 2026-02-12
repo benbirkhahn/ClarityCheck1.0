@@ -3,10 +3,11 @@ import type { Finding } from '../types';
 
 interface SidebarProps {
     onSanitize: () => void;
-    onStartDrawing?: () => void;
+    onStartDrawing: () => void;
+    onEditFinding?: (finding: Finding | ManualFinding) => void;
 }
 
-export default function Sidebar({ onSanitize, onStartDrawing }: SidebarProps) {
+export default function Sidebar({ onSanitize, onStartDrawing, onEditFinding }: SidebarProps) {
     const {
         findings,
         manualFindings,
@@ -59,6 +60,7 @@ export default function Sidebar({ onSanitize, onStartDrawing }: SidebarProps) {
                         findingNumber={index + 1}
                         ignored={isIgnored(finding.id)}
                         onToggle={() => toggleIgnored(finding.id)}
+                        onEdit={() => onEditFinding?.(finding)}
                     />
                 ))}
 
@@ -70,6 +72,7 @@ export default function Sidebar({ onSanitize, onStartDrawing }: SidebarProps) {
                         ignored={isIgnored(finding.id)}
                         onToggle={() => toggleIgnored(finding.id)}
                         onDelete={() => removeManualFinding(finding.id)}
+                        onEdit={() => onEditFinding?.(finding)}
                     />
                 ))}
 
@@ -84,10 +87,10 @@ export default function Sidebar({ onSanitize, onStartDrawing }: SidebarProps) {
                 <button
                     onClick={onSanitize}
                     disabled={toRemoveCount === 0}
-                    className={`w-full py-3 rounded-lg font-semibold text-white transition-colors flex items-center justify-center gap-2 ${toRemoveCount === 0
+                    className={`w - full py - 3 rounded - lg font - semibold text - white transition - colors flex items - center justify - center gap - 2 ${toRemoveCount === 0
                         ? 'bg-slate-700 cursor-not-allowed'
                         : 'bg-emerald-500 hover:bg-emerald-600'
-                        }`}
+                        } `}
                 >
                     <span>✨ Download Sanitized PDF</span>
                     {toRemoveCount > 0 && (
@@ -104,11 +107,12 @@ export default function Sidebar({ onSanitize, onStartDrawing }: SidebarProps) {
     );
 }
 
-function FindingCard({ finding, findingNumber, ignored, onToggle }: {
+function FindingCard({ finding, findingNumber, ignored, onToggle, onEdit }: {
     finding: Finding,
     findingNumber: number,
     ignored: boolean,
-    onToggle: () => void
+    onToggle: () => void,
+    onEdit: () => void
 }) {
     const { hoveredFindingId, setHoveredFinding } = useFindingStore();
     const isHovered = hoveredFindingId === finding.id;
@@ -116,14 +120,14 @@ function FindingCard({ finding, findingNumber, ignored, onToggle }: {
     return (
         <div
             className={`
-                p-3 rounded-lg border transition-all cursor-pointer
+p - 3 rounded - lg border transition - all cursor - pointer
                 ${ignored
                     ? 'bg-slate-800 border-slate-700 opacity-80'
                     : isHovered
                         ? 'bg-slate-700 border-yellow-400 ring-2 ring-yellow-400/50'
                         : 'bg-slate-700/50 border-slate-600 hover:border-red-500/50'
                 }
-            `}
+`}
             onClick={onToggle}
             onMouseEnter={() => setHoveredFinding(finding.id)}
             onMouseLeave={() => setHoveredFinding(null)}
@@ -131,18 +135,30 @@ function FindingCard({ finding, findingNumber, ignored, onToggle }: {
             <div className="flex justify-between items-start mb-2">
                 <div className="flex items-center gap-2">
                     <span className={`
-                        text-xs font-bold px-2 py-1 rounded
+text - xs font - bold px - 2 py - 1 rounded
                         ${ignored ? 'bg-slate-600 text-white' : 'bg-red-600 text-white'}
-                    `}>
+`}>
                         #{findingNumber}
                     </span>
                     <span className="text-xs text-slate-400">Page {finding.page}</span>
                 </div>
-                <div className={`
-                    flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded
-                    ${ignored ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}
-                `}>
-                    {ignored ? '✓ KEEP' : '✗ REMOVE'}
+                <div className="flex items-center gap-2">
+                    <div className={`
+                        flex items - center gap - 1 text - xs font - semibold px - 2 py - 1 rounded
+                        ${ignored ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}
+`}>
+                        {ignored ? '✓ KEEP' : '✗ REMOVE'}
+                    </div>
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onEdit();
+                        }}
+                        className="px-2 py-1 bg-blue-600 hover:bg-blue-700 rounded text-xs text-white transition-colors"
+                        title="Edit coordinates"
+                    >
+                        ✏️
+                    </button>
                 </div>
             </div>
 
@@ -157,12 +173,13 @@ function FindingCard({ finding, findingNumber, ignored, onToggle }: {
     );
 }
 
-function ManualFindingCard({ finding, findingNumber, ignored, onToggle, onDelete }: {
+function ManualFindingCard({ finding, findingNumber, ignored, onToggle, onDelete, onEdit }: {
     finding: ManualFinding,
     findingNumber: number,
     ignored: boolean,
     onToggle: () => void,
-    onDelete: () => void
+    onDelete: () => void,
+    onEdit: () => void
 }) {
     const { hoveredFindingId, setHoveredFinding } = useFindingStore();
     const isHovered = hoveredFindingId === finding.id;
@@ -170,14 +187,14 @@ function ManualFindingCard({ finding, findingNumber, ignored, onToggle, onDelete
     return (
         <div
             className={`
-                p-3 rounded-lg border transition-all cursor-pointer
+p - 3 rounded - lg border transition - all cursor - pointer
                 ${ignored
                     ? 'bg-slate-800 border-slate-700 opacity-80'
                     : isHovered
                         ? 'bg-slate-700 border-yellow-400 ring-2 ring-yellow-400/50'
                         : 'bg-blue-700/30 border-blue-600 hover:border-blue-500/50'
                 }
-            `}
+`}
             onClick={onToggle}
             onMouseEnter={() => setHoveredFinding(finding.id)}
             onMouseLeave={() => setHoveredFinding(null)}
@@ -185,9 +202,9 @@ function ManualFindingCard({ finding, findingNumber, ignored, onToggle, onDelete
             <div className="flex justify-between items-start mb-2">
                 <div className="flex items-center gap-2">
                     <span className={`
-                        text-xs font-bold px-2 py-1 rounded
+text - xs font - bold px - 2 py - 1 rounded
                         ${ignored ? 'bg-slate-600 text-white' : 'bg-blue-600 text-white'}
-                    `}>
+`}>
                         #{findingNumber}
                     </span>
                     <span className="text-xs text-blue-300 font-medium">📍 Manual</span>
@@ -200,6 +217,16 @@ function ManualFindingCard({ finding, findingNumber, ignored, onToggle, onDelete
                     `}>
                         {ignored ? '✓ KEEP' : '✗ REMOVE'}
                     </div>
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onEdit();
+                        }}
+                        className="px-2 py-1 bg-blue-600 hover:bg-blue-700 rounded text-xs text-white transition-colors"
+                        title="Edit coordinates"
+                    >
+                        ✏️
+                    </button>
                     <button
                         onClick={(e) => {
                             e.stopPropagation();

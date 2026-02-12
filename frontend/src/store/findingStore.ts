@@ -25,6 +25,7 @@ interface FindingState {
     addManualFinding: (finding: ManualFinding) => void;
     removeManualFinding: (id: string) => void;
     updateManualFinding: (id: string, updates: Partial<ManualFinding>) => void;
+    updateFinding: (id: string, updates: { x?: number; y?: number; width?: number; height?: number }) => void;
     reset: () => void;
 }
 
@@ -76,11 +77,19 @@ export const useFindingStore = create<FindingState>((set, get) => ({
         ignoredFindingIds: new Set([...state.ignoredFindingIds].filter(fid => fid !== id))
     })),
 
-    updateManualFinding: (id, updates) => set((state) => ({
-        manualFindings: state.manualFindings.map(f =>
-            f.id === id ? { ...f, ...updates } : f
-        )
-    })),
+    updateManualFinding: (id: string, updates: Partial<Omit<ManualFinding, 'id' | 'type'>>) =>
+        set((state) => ({
+            manualFindings: state.manualFindings.map(f =>
+                f.id === id ? { ...f, ...updates } : f
+            ),
+        })),
+
+    updateFinding: (id: string, updates: { x?: number; y?: number; width?: number; height?: number }) =>
+        set((state) => ({
+            findings: state.findings.map(f =>
+                f.id === id ? { ...f, ...updates } : f
+            ),
+        })),
 
     reset: () => set({
         findings: [],

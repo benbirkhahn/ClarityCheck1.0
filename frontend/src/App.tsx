@@ -3,7 +3,10 @@ import { uploadDocument, getAnalysis, downloadSanitized, pollJobStatus } from '.
 import type { UploadResponse, AnalysisResponse } from './types';
 import PDFViewer from './components/PDFViewer';
 import Sidebar from './components/Sidebar';
+import CoordEditor from './components/CoordEditor';
 import { useFindingStore } from './store/findingStore';
+import type { ManualFinding } from './store/findingStore';
+import type { Finding } from './types';
 
 function App() {
   const [isDragging, setIsDragging] = useState(false);
@@ -13,6 +16,7 @@ function App() {
   const [analysis, setAnalysis] = useState<AnalysisResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isDrawingMode, setIsDrawingMode] = useState(false);
+  const [editingFinding, setEditingFinding] = useState<Finding | ManualFinding | null>(null);
 
   // Store actions
   const setFindings = useFindingStore(state => state.setFindings);
@@ -20,6 +24,8 @@ function App() {
   const findings = useFindingStore(state => state.findings);
   const manualFindings = useFindingStore(state => state.manualFindings);
   const ignoredFindingIds = useFindingStore(state => state.ignoredFindingIds);
+  const updateFinding = useFindingStore(state => state.updateFinding);
+  const updateManualFinding = useFindingStore(state => state.updateManualFinding);
 
   const handleFile = useCallback(async (file: File) => {
     if (!file.name.toLowerCase().endsWith('.pdf')) {
@@ -102,6 +108,21 @@ function App() {
       setError(err instanceof Error ? err.message : 'Sanitization failed');
     }
   }, [uploadResult, findings, manualFindings, ignoredFindingIds]);
+
+  // Handle coordinate editor save
+  const handleEditorSave = (updates: { x: number; y: number; width: number; height: number; page?: number }) => {
+    if (!editingFinding) return;
+
+    if ('type' in editingFinding && editingFinding.type === 'manual') {
+      // Manual finding
+      updateManualFinding(editingFinding.id, updates);
+    } else {
+      // Auto finding
+      updateFinding(editingFinding.id, updates);
+    }
+
+    setEditingFinding(null);
+  };
 
   const resetState = () => {
     setUploadResult(null);
@@ -215,9 +236,18 @@ function App() {
             <Sidebar
               onSanitize={handleSanitize}
               onStartDrawing={() => setIsDrawingMode(true)}
+              onEditFinding={(finding) => setEditingFinding(finding)}
             />
           </div>
         )}
+
+        {/* Coordinate Editor Modal */}
+        <CoordEditor
+          isOpen={!!editingFinding}
+          finding={editingFinding}
+          onSave={handleEditorSave}
+          onClose={() => setEditingFinding(null)}
+        />
       </main>
     </div>
   );
