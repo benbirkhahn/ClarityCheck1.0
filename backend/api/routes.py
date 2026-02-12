@@ -6,7 +6,7 @@ from pathlib import Path
 from datetime import datetime
 from typing import List, Optional
 
-from fastapi import APIRouter, UploadFile, File, HTTPException, Depends, BackgroundTasks
+from fastapi import APIRouter, UploadFile, File, HTTPException, Depends, BackgroundTasks, Request
 from fastapi.responses import Response
 from sqlmodel import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -19,6 +19,8 @@ from backend.core.models import (
 from pydantic import BaseModel
 from backend.core.analyzer import AnalyzedFinding, TrapType, TrapImpact, TrapAnalysis
 from backend.core.database import get_session
+from backend.core.usage import usage_tracker
+from backend.core.fingerprint import get_user_id_from_request, parse_fingerprint_header
 # from backend.workers.tasks import analyze_document_task
 
 router = APIRouter()
@@ -29,6 +31,7 @@ UPLOAD_DIR.mkdir(exist_ok=True)
 
 @router.post("/documents/upload")
 async def upload_document(
+    request: Request,
     background_tasks: BackgroundTasks,
     file: UploadFile = File(..., description="PDF file (max 10MB)"),
     session: AsyncSession = Depends(get_session)
@@ -36,6 +39,25 @@ async def upload_document(
     """Upload a PDF for analysis (Async)."""
     if not file.filename.lower().endswith('.pdf'):
         raise HTTPException(status_code=400, detail="Only PDF files are supported")
+    
+    # Check usage limits BEFORE processing
+    user_id = get_user_id_from_request(request)
+    can_upload, remaining, plan = usage_tracker.can_upload(user_id)
+    
+    if not can_upload:
+        usage_stats = usage_tracker.get_usage_stats(user_id)
+        raise HTTPException(
+            status_code=429,  # Too Many Requests
+            detail={
+                "error": "Upload limit reached",
+                "message": f"You've used all {usage_stats['effective_limit']} PDFs this month",
+                "plan": plan.value,
+                "usage": usage_stats['usage'],
+                "limit": usage_stats['effective_limit'],
+                "reset_date": usage_stats['reset_date'],
+                "action_required": "upgrade" if plan.value.startswith("free") else "buy_credits"
+            }
+        )
     
     print(f"[{datetime.utcnow()}] Received upload: {file.filename}")
     try:
@@ -64,6 +86,10 @@ async def upload_document(
         background_tasks.add_task(analyze_job_sync, job.id, str(file_path))
         print(f"[{datetime.utcnow()}] Background task scheduled")
         
+        # Track successful upload (increment counter)
+        usage_tracker.track_upload(user_id)
+        print(f"[{datetime.utcnow()}] Usage tracked for {user_id}")
+        
     except Exception as e:
         print(f"[{datetime.utcnow()}] Upload Error: {e}")
         
@@ -78,11 +104,19 @@ async def upload_document(
         await session.commit()
         raise HTTPException(status_code=500, detail=f"Upload failed: {e}")
     
+    # Get updated usage stats to return to user
+    usage_stats = usage_tracker.get_usage_stats(user_id)
+    
     return {
         "job_id": job.id,
         "status": "queued",
         "filename": job.filename,
-        "message": "Analysis started in background"
+        "message": "Analysis started in background",
+        "usage": {
+            "plan": usage_stats['plan'],
+            "remaining": usage_stats['effective_remaining'],
+            "total": usage_stats['effective_limit']
+        }
     }
 
 

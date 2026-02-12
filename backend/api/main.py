@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.api.routes import router
+from backend.api import usage_routes
 
 from contextlib import asynccontextmanager
 from backend.core.database import init_db
@@ -32,6 +33,7 @@ app.add_middleware(
 )
 
 app.include_router(router, prefix="/api")
+app.include_router(usage_routes.router, prefix="/api", tags=["usage"])
 
 
 @app.get("/")
