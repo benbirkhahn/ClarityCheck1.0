@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
 import { useFindingStore, type ManualFinding } from '../store/findingStore';
+import ResizableBox from './ResizableBox';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
 
@@ -10,14 +11,25 @@ interface PDFViewerProps {
     fileUrl: string;
     isDrawingMode?: boolean;
     onDrawingComplete?: () => void;
+    editingFindingId?: string | null;
+    onEditComplete?: (id: string, updates: { x: number; y: number; width: number; height: number }) => void;
+    onEditCancel?: () => void;
 }
 
-export default function PDFViewer({ fileUrl, isDrawingMode = false, onDrawingComplete }: PDFViewerProps) {
+export default function PDFViewer({
+    fileUrl,
+    isDrawingMode = false,
+    onDrawingComplete,
+    editingFindingId = null,
+    onEditComplete,
+    onEditCancel
+}: PDFViewerProps) {
     const [numPages, setNumPages] = useState<number>(0);
     const [scale, setScale] = useState<number>(1.2);
     const [isDrawing, setIsDrawing] = useState(false);
     const [drawStart, setDrawStart] = useState<{ x: number, y: number, pageNum: number } | null>(null);
     const [currentRect, setCurrentRect] = useState<{ x: number, y: number, width: number, height: number } | null>(null);
+    const [tempCoords, setTempCoords] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
     const pageRefs = useRef<Map<number, HTMLDivElement>>(new Map());
 
     const { findings, manualFindings, isIgnored, toggleIgnored, hoveredFindingId, setHoveredFinding, addManualFinding } = useFindingStore();
@@ -223,6 +235,54 @@ export default function PDFViewer({ fileUrl, isDrawingMode = false, onDrawingCom
                                     );
                                 })}
 
+
+                            {/* ResizableBox for editing */}
+                            {editingFindingId && (() => {
+                                // Find the editing finding (could be auto or manual)
+                                const editingFinding = [...findings, ...manualFindings].find(f => f.id === editingFindingId);
+                                if (!editingFinding) return null;
+
+                                // Get coordinates
+                                const coords = tempCoords || {
+                                    x: 'x' in editingFinding ? editingFinding.x || 0 : 0,
+                                    y: 'y' in editingFinding ? editingFinding.y || 0 : 0,
+                                    width: 'width' in editingFinding ? editingFinding.width || 100 : 100,
+                                    height: 'height' in editingFinding ? editingFinding.height || 20 : 20,
+                                };
+
+                                // Only render if on current page
+                                const findingPage = 'page' in editingFinding ? editingFinding.page : index + 1;
+                                if (findingPage !== index + 1) return null;
+
+                                const pageElement = pageRefs.current.get(index + 1);
+                                if (!pageElement) return null;
+
+                                const pageRect = pageElement.getBoundingClientRect();
+
+                                return (
+                                    <ResizableBox
+                                        x={coords.x}
+                                        y={coords.y}
+                                        width={coords.width}
+                                        height={coords.height}
+                                        page={index + 1}
+                                        scale={scale}
+                                        maxWidth={pageRect.width / scale}
+                                        maxHeight={pageRect.height / scale}
+                                        onUpdate={(updates) => setTempCoords(updates)}
+                                        onSave={() => {
+                                            if (tempCoords && onEditComplete) {
+                                                onEditComplete(editingFindingId, tempCoords);
+                                            }
+                                            setTempCoords(null);
+                                        }}
+                                        onCancel={() => {
+                                            setTempCoords(null);
+                                            onEditCancel?.();
+                                        }}
+                                    />
+                                );
+                            })()}
                             {/* Current Drawing Rectangle */}
                             {isDrawing && drawStart && drawStart.pageNum === index + 1 && currentRect && (
                                 <div

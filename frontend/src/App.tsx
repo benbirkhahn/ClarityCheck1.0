@@ -3,10 +3,7 @@ import { uploadDocument, getAnalysis, downloadSanitized, pollJobStatus } from '.
 import type { UploadResponse, AnalysisResponse } from './types';
 import PDFViewer from './components/PDFViewer';
 import Sidebar from './components/Sidebar';
-import CoordEditor from './components/CoordEditor';
 import { useFindingStore } from './store/findingStore';
-import type { ManualFinding } from './store/findingStore';
-import type { Finding } from './types';
 
 function App() {
   const [isDragging, setIsDragging] = useState(false);
@@ -16,7 +13,7 @@ function App() {
   const [analysis, setAnalysis] = useState<AnalysisResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isDrawingMode, setIsDrawingMode] = useState(false);
-  const [editingFinding, setEditingFinding] = useState<Finding | ManualFinding | null>(null);
+  const [editingFindingId, setEditingFindingId] = useState<string | null>(null);
 
   // Store actions
   const setFindings = useFindingStore(state => state.setFindings);
@@ -127,20 +124,17 @@ function App() {
     }
   }, [uploadResult, findings, manualFindings, ignoredFindingIds]);
 
-  // Handle coordinate editor save
-  const handleEditorSave = (updates: { x: number; y: number; width: number; height: number; page?: number }) => {
-    if (!editingFinding) return;
-
-    if ('type' in editingFinding && editingFinding.type === 'manual') {
-      // Manual finding
-      updateManualFinding(editingFinding.id, updates);
+  // Handle visual edit mode complete
+  const handleEditComplete = (id: string, updates: { x: number; y: number; width: number; height: number }) => {
+    const manualFinding = manualFindings.find(f => f.id === id);
+    if (manualFinding) {
+      updateManualFinding(id, updates);
     } else {
-      // Auto finding
-      updateFinding(editingFinding.id, updates);
+      updateFinding(id, updates);
     }
-
-    setEditingFinding(null);
+    setEditingFindingId(null);
   };
+
 
   const resetState = () => {
     setUploadResult(null);
@@ -247,25 +241,22 @@ function App() {
                 fileUrl={fileUrl}
                 isDrawingMode={isDrawingMode}
                 onDrawingComplete={() => setIsDrawingMode(false)}
-              />
+                          editingFindingId={editingFindingId}
+            onEditComplete={handleEditComplete}
+            onEditCancel={() => setEditingFindingId(null)}
+            />
             </div>
 
             {/* Sidebar */}
             <Sidebar
               onSanitize={handleSanitize}
               onStartDrawing={() => setIsDrawingMode(true)}
-              onEditFinding={(finding) => setEditingFinding(finding)}
+              onEditFinding={(finding) => setEditingFindingId(finding.id)}
             />
           </div>
         )}
 
         {/* Coordinate Editor Modal */}
-        <CoordEditor
-          isOpen={!!editingFinding}
-          finding={editingFinding}
-          onSave={handleEditorSave}
-          onClose={() => setEditingFinding(null)}
-        />
       </main>
     </div>
   );
