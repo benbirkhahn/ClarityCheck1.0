@@ -15,6 +15,7 @@ interface FindingState {
     findings: Finding[];
     manualFindings: ManualFinding[];
     ignoredFindingIds: Set<string>;
+    editedFindingIds: Set<string>; // Track which auto findings have been edited
     hoveredFindingId: string | null;
 
     setFindings: (findings: Finding[]) => void;
@@ -26,6 +27,7 @@ interface FindingState {
     removeManualFinding: (id: string) => void;
     updateManualFinding: (id: string, updates: Partial<ManualFinding>) => void;
     updateFinding: (id: string, updates: { x?: number; y?: number; width?: number; height?: number }) => void;
+    isEdited: (id: string) => boolean;
     reset: () => void;
 }
 
@@ -33,6 +35,7 @@ export const useFindingStore = create<FindingState>((set, get) => ({
     findings: [],
     manualFindings: [],
     ignoredFindingIds: new Set(),
+    editedFindingIds: new Set(),
     hoveredFindingId: null,
 
     setFindings: (findings) => set({ findings }),
@@ -85,16 +88,24 @@ export const useFindingStore = create<FindingState>((set, get) => ({
         })),
 
     updateFinding: (id: string, updates: { x?: number; y?: number; width?: number; height?: number }) =>
-        set((state) => ({
-            findings: state.findings.map(f =>
-                f.id === id ? { ...f, ...updates } : f
-            ),
-        })),
+        set((state) => {
+            const newEditedIds = new Set(state.editedFindingIds);
+            newEditedIds.add(id); // Mark as edited
+            return {
+                findings: state.findings.map(f =>
+                    f.id === id ? { ...f, ...updates } : f
+                ),
+                editedFindingIds: newEditedIds
+            };
+        }),
+
+    isEdited: (id) => get().editedFindingIds.has(id),
 
     reset: () => set({
         findings: [],
         manualFindings: [],
         ignoredFindingIds: new Set(),
+        editedFindingIds: new Set(),
         hoveredFindingId: null
     })
 }));

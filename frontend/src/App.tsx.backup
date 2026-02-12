@@ -83,45 +83,27 @@ function App() {
   const handleSanitize = useCallback(async () => {
     if (!uploadResult) return;
     try {
-      // Track which auto findings have been edited
-      const editedFindingIds = useFindingStore.getState().editedFindingIds;
-      
-      // Split auto findings into edited and unedited
-      const uneditedAutoFindings = findings.filter(f => !editedFindingIds.has(f.id));
-      const editedAutoFindings = findings.filter(f => editedFindingIds.has(f.id));
-      
-      // Unedited auto findings use backend's stored coordinates
-      const uneditedConfirmedIds = uneditedAutoFindings
+      // Combine auto findings + manual findings
+      const allFindings = [...findings, ...manualFindings];
+
+      // Calculate confirmed findings (ALL - IGNORED)
+      const confirmedIds = allFindings
         .filter(f => !ignoredFindingIds.has(f.id))
         .map(f => f.id);
 
-      // Manual regions: BOTH manual findings AND edited auto findings
-      const manualRegions = [
-        // Edited auto findings with updated coordinates
-        ...editedAutoFindings
-          .filter(f => !ignoredFindingIds.has(f.id))
-          .map(f => ({
-            id: f.id,
-            page: f.page,
-            x: f.x || 0,
-            y: f.y || 0,
-            width: f.width || 100,
-            height: f.height || 20,
-          })),
-        // Manual findings
-        ...manualFindings
-          .filter(f => !ignoredFindingIds.has(f.id))
-          .map(f => ({
-            id: f.id,
-            page: f.page,
-            x: f.x,
-            y: f.y,
-            width: f.width,
-            height: f.height,
-          }))
-      ];
+      // Get manual regions to send separately
+      const manualRegions = manualFindings
+        .filter(f => !ignoredFindingIds.has(f.id))
+        .map(f => ({
+          id: f.id,
+          page: f.page,
+          x: f.x,
+          y: f.y,
+          width: f.width,
+          height: f.height,
+        }));
 
-      await downloadSanitized(uploadResult.job_id, uploadResult.filename, uneditedConfirmedIds, manualRegions);
+      await downloadSanitized(uploadResult.job_id, uploadResult.filename, confirmedIds, manualRegions);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Sanitization failed');
     }
