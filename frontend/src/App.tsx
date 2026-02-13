@@ -27,7 +27,7 @@ function App() {
   const updateManualFinding = useFindingStore(state => state.updateManualFinding);
 
   // Usage store
-  const { canUpload, fetchUsage } = useUsageStore();
+  const { fetchUsage } = useUsageStore();
 
   const handleFile = useCallback(async (file: File) => {
     if (!file.name.toLowerCase().endsWith('.pdf')) {
