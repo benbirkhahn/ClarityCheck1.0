@@ -24,6 +24,11 @@ class Settings(BaseSettings):
     LLM_DETECTOR_ENABLED: bool = False
     GEMINI_API_KEY: Optional[str] = None
     LLM_MODEL: str = "gemini-2.0-flash-exp"
+    
+    # Stripe
+    STRIPE_SECRET_KEY: str = ""
+    STRIPE_PUBLISHABLE_KEY: str = ""
+    STRIPE_WEBHOOK_SECRET: str = ""
 
 
     @field_validator("CORS_ORIGINS", mode="before")
