@@ -3,7 +3,9 @@ import { uploadDocument, getAnalysis, downloadSanitized, pollJobStatus } from '.
 import type { UploadResponse, AnalysisResponse } from './types';
 import PDFViewer from './components/PDFViewer';
 import Sidebar from './components/Sidebar';
+import UsageBadge from './components/UsageBadge';
 import { useFindingStore } from './store/findingStore';
+import { useUsageStore } from './store/usageStore';
 
 function App() {
   const [isDragging, setIsDragging] = useState(false);
@@ -24,6 +26,9 @@ function App() {
   const updateFinding = useFindingStore(state => state.updateFinding);
   const updateManualFinding = useFindingStore(state => state.updateManualFinding);
 
+  // Usage store
+  const { canUpload, fetchUsage } = useUsageStore();
+
   const handleFile = useCallback(async (file: File) => {
     if (!file.name.toLowerCase().endsWith('.pdf')) {
       setError('Please upload a PDF file');
@@ -42,6 +47,9 @@ function App() {
       const result = await uploadDocument(file);
       setUploadResult(result);
 
+      // Refresh usage stats
+      fetchUsage();
+
       // 2. Poll for completion
       setStatusMessage("Analyzing document (this may take a moment)...");
       await pollJobStatus(result.job_id);
@@ -54,7 +62,13 @@ function App() {
       setFindings(analysisData.findings);
 
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Upload failed');
+      const message = err instanceof Error ? err.message : 'Upload failed';
+      // Use friendly error if it's a 429
+      if (message.includes('429') || message.includes('Limit reached')) {
+        setError('You have reached your free monthly upload limit.');
+      } else {
+        setError(message);
+      }
     } finally {
       setIsLoading(false);
       setStatusMessage("");
@@ -82,11 +96,11 @@ function App() {
     try {
       // Track which auto findings have been edited
       const editedFindingIds = useFindingStore.getState().editedFindingIds;
-      
+
       // Split auto findings into edited and unedited
       const uneditedAutoFindings = findings.filter(f => !editedFindingIds.has(f.id));
       const editedAutoFindings = findings.filter(f => editedFindingIds.has(f.id));
-      
+
       // Unedited auto findings use backend's stored coordinates
       const uneditedConfirmedIds = uneditedAutoFindings
         .filter(f => !ignoredFindingIds.has(f.id))
@@ -178,6 +192,7 @@ function App() {
                 Score: {analysis.risk_score}
               </span>
             )}
+            <UsageBadge />
           </div>
           {analysis && (
             <button onClick={resetState} className="text-slate-400 hover:text-white">New Scan</button>
@@ -241,10 +256,10 @@ function App() {
                 fileUrl={fileUrl}
                 isDrawingMode={isDrawingMode}
                 onDrawingComplete={() => setIsDrawingMode(false)}
-                          editingFindingId={editingFindingId}
-            onEditComplete={handleEditComplete}
-            onEditCancel={() => setEditingFindingId(null)}
-            />
+                editingFindingId={editingFindingId}
+                onEditComplete={handleEditComplete}
+                onEditCancel={() => setEditingFindingId(null)}
+              />
             </div>
 
             {/* Sidebar */}

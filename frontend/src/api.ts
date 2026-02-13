@@ -83,3 +83,16 @@ export async function downloadSanitized(
   window.URL.revokeObjectURL(url);
   a.remove();
 }
+
+export async function getUsage(): Promise<{
+  plan: string;
+  limit: number;
+  usage: number;
+  can_upload: boolean;
+  remaining?: number;
+}> {
+  const response = await fetch(`${API_BASE}/usage`);
+  if (!response.ok) throw new Error(`Failed to get usage: ${response.statusText}`);
+  const json = await response.json();
+  return json.data;
+}
