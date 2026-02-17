@@ -32,7 +32,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(router, prefix="/api")
+app.include_router(routes.router, prefix="/api")
 app.include_router(usage_routes.router, prefix="/api", tags=["usage"])
 app.include_router(subscriptions.router, prefix="/api", tags=["stripe"])
 app.include_router(webhooks.router, prefix="/api", tags=["stripe"])

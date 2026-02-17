@@ -152,7 +152,7 @@ export async function createCheckoutSession(priceId: string): Promise<{ url: str
     },
     body: JSON.stringify({
       price_id: priceId,
-      user_id: "anonymous_user" //  FIXME: This will be WRONG. I need the real user_id.
+      // user_id is optional, backend will derive from request fingerprint if missing
     }),
   });
 

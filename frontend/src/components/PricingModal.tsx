@@ -13,7 +13,7 @@ const PLANS = [
         price: 4.99,
         interval: 'mo',
         features: ['50 PDFs / month', 'Basic Support', '1 User'],
-        priceId: 'price_student_monthly_placeholder', // TODO: User to header
+        priceId: 'price_1T1x6nGc5yiFDDpmdYmwEnLj',
         color: 'emerald'
     },
     {
@@ -22,7 +22,7 @@ const PLANS = [
         price: 9.99,
         interval: 'mo',
         features: ['Unlimited PDFs', 'Priority Support', 'Advanced Analytics'],
-        priceId: 'price_pro_monthly_placeholder',
+        priceId: 'price_1T1x7fGc5yiFDDpmDvUBB2YV',
         color: 'blue'
     }
 ];
@@ -32,13 +32,13 @@ const PACKS = [
         id: '10_credits',
         name: '10 Credits',
         price: 2.99,
-        priceId: 'price_10_credits_placeholder',
+        priceId: 'price_1T1x8bGc5yiFDDpmpy8bXZyW',
     },
     {
         id: '25_credits',
         name: '25 Credits',
         price: 4.99,
-        priceId: 'price_25_credits_placeholder',
+        priceId: 'price_1T1x9VGc5yiFDDpmqXzwV5o6',
     }
 ]
 
@@ -75,8 +75,8 @@ export default function PricingModal({ onClose }: PricingModalProps) {
                             <div
                                 key={plan.id}
                                 className={`relative p-6 rounded-xl border-2 transition-all ${currentPlan.includes(plan.id)
-                                        ? `border-${plan.color}-500 bg-${plan.color}-500/10`
-                                        : 'border-slate-700 hover:border-slate-500 bg-slate-800/50'
+                                    ? `border-${plan.color}-500 bg-${plan.color}-500/10`
+                                    : 'border-slate-700 hover:border-slate-500 bg-slate-800/50'
                                     }`}
                             >
                                 {currentPlan.includes(plan.id) && (
@@ -100,8 +100,8 @@ export default function PricingModal({ onClose }: PricingModalProps) {
                                     onClick={() => handleSubscribe(plan.priceId, plan.id)}
                                     disabled={!!loadingId || currentPlan.includes(plan.id)}
                                     className={`w-full py-3 rounded-lg font-bold transition-all ${currentPlan.includes(plan.id)
-                                            ? 'bg-slate-700 text-slate-400 cursor-not-allowed'
-                                            : `bg-${plan.color}-600 hover:bg-${plan.color}-500 text-white`
+                                        ? 'bg-slate-700 text-slate-400 cursor-not-allowed'
+                                        : `bg-${plan.color}-600 hover:bg-${plan.color}-500 text-white`
                                         }`}
                                 >
                                     {loadingId === plan.id ? 'Loading...' : currentPlan.includes(plan.id) ? 'Active' : 'Upgrade'}
