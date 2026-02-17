@@ -3,8 +3,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from backend.api.routes import router
-from backend.api import usage_routes
+from backend.api import routes, usage_routes, subscriptions, webhooks
+from backend.core.config import settings
 
 from contextlib import asynccontextmanager
 from backend.core.database import init_db
@@ -34,6 +34,8 @@ app.add_middleware(
 
 app.include_router(router, prefix="/api")
 app.include_router(usage_routes.router, prefix="/api", tags=["usage"])
+app.include_router(subscriptions.router, prefix="/api", tags=["stripe"])
+app.include_router(webhooks.router, prefix="/api", tags=["stripe"])
 
 
 @app.get("/")
