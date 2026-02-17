@@ -16,13 +16,19 @@ export default function UsageBadge() {
     // Color coding based on remaining credits
     let colorClass = "bg-emerald-500/10 text-emerald-400 border-emerald-500/50";
     if (!isUnlimited && remaining === 0) {
-        colorClass = "bg-red-500/10 text-red-400 border-red-500/50";
+        colorClass = "bg-red-500/10 text-red-400 border-red-500/50 animate-pulse cursor-pointer hover:bg-red-500/20";
     } else if (!isUnlimited && remaining <= 2) {
-        colorClass = "bg-amber-500/10 text-amber-400 border-amber-500/50";
+        colorClass = "bg-amber-500/10 text-amber-400 border-amber-500/50 cursor-pointer hover:bg-amber-500/20";
+    } else {
+        colorClass += " cursor-pointer hover:bg-emerald-500/20";
     }
 
     return (
-        <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border ${colorClass} text-sm font-medium transition-colors`}>
+        <div
+            onClick={() => useUsageStore.getState().setPricingOpen(true)}
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-full border ${colorClass} text-sm font-medium transition-colors`}
+            title="Click to upgrade"
+        >
             <span className="text-xs uppercase opacity-70 tracking-wider">
                 {plan.replace('_', ' ')}
             </span>

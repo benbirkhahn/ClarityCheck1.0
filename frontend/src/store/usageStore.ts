@@ -8,9 +8,11 @@ interface UsageState {
     canUpload: boolean;
     isLoading: boolean;
     error: string | null;
+    isPricingOpen: boolean;
 
     fetchUsage: () => Promise<void>;
     incrementUsage: () => void; // Optimistic update
+    setPricingOpen: (isOpen: boolean) => void;
 }
 
 export const useUsageStore = create<UsageState>((set, get) => ({
@@ -20,6 +22,9 @@ export const useUsageStore = create<UsageState>((set, get) => ({
     canUpload: true,
     isLoading: false,
     error: null,
+    isPricingOpen: false,
+
+    setPricingOpen: (isOpen) => set({ isPricingOpen: isOpen }),
 
     fetchUsage: async () => {
         set({ isLoading: true });

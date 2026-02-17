@@ -4,6 +4,7 @@ import type { UploadResponse, AnalysisResponse } from './types';
 import PDFViewer from './components/PDFViewer';
 import Sidebar from './components/Sidebar';
 import UsageBadge from './components/UsageBadge';
+import PricingModal from './components/PricingModal';
 import { useFindingStore } from './store/findingStore';
 import { useUsageStore } from './store/usageStore';
 
@@ -27,7 +28,7 @@ function App() {
   const updateManualFinding = useFindingStore(state => state.updateManualFinding);
 
   // Usage store
-  const { fetchUsage } = useUsageStore();
+  const { fetchUsage, isPricingOpen, setPricingOpen } = useUsageStore();
 
   const handleFile = useCallback(async (file: File) => {
     if (!file.name.toLowerCase().endsWith('.pdf')) {
@@ -267,11 +268,15 @@ function App() {
               onSanitize={handleSanitize}
               onStartDrawing={() => setIsDrawingMode(true)}
               onEditFinding={(finding) => setEditingFindingId(finding.id)}
+              onUpgrade={() => setPricingOpen(true)}
             />
           </div>
         )}
 
         {/* Coordinate Editor Modal */}
+
+        {/* Pricing Modal */}
+        {isPricingOpen && <div className="fixed inset-0 z-50"><PricingModal onClose={() => setPricingOpen(false)} /></div>}
       </main>
     </div>
   );
