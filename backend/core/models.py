@@ -75,6 +75,12 @@ class DBUser(SQLModel, table=True):
     is_active: bool = True
     created_at: datetime = SQLModelField(default_factory=datetime.utcnow)
     
+    # Usage Tracking
+    plan: str = SQLModelField(default="free_email")  # Using string to avoid circular imports or complex Enum handling in SQLModel for now
+    credits: int = SQLModelField(default=0)
+    monthly_usage: int = SQLModelField(default=0)
+    billing_cycle_start: datetime = SQLModelField(default_factory=datetime.utcnow)
+
     jobs: List["DBJob"] = Relationship(back_populates="user")
 
 

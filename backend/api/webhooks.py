@@ -1,4 +1,6 @@
-from fastapi import APIRouter, Request, HTTPException, Header
+from fastapi import APIRouter, Request, HTTPException, Header, Depends
+from sqlalchemy.ext.asyncio import AsyncSession
+from backend.core.database import get_session
 from backend.core.config import settings
 from backend.core.usage import usage_tracker, Plan
 import stripe
@@ -13,7 +15,11 @@ router = APIRouter()
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
 @router.post("/webhook")
-async def stripe_webhook(request: Request, stripe_signature: str = Header(None)):
+async def stripe_webhook(
+    request: Request, 
+    stripe_signature: str = Header(None),
+    db_session: AsyncSession = Depends(get_session)
+):
     payload = await request.body()
     
     try:
@@ -32,7 +38,7 @@ async def stripe_webhook(request: Request, stripe_signature: str = Header(None))
     # Handle the event
     if event['type'] == 'checkout.session.completed':
         session = event['data']['object']
-        await handle_checkout_completed(session)
+        await handle_checkout_completed(session, db_session)
     elif event['type'] == 'customer.subscription.updated':
         subscription = event['data']['object']
         # handle_subscription_updated(subscription)
@@ -44,7 +50,7 @@ async def stripe_webhook(request: Request, stripe_signature: str = Header(None))
 
     return {"status": "success"}
 
-async def handle_checkout_completed(session):
+async def handle_checkout_completed(session, db_session: AsyncSession):
     user_id = session.get("client_reference_id") or session.get("metadata", {}).get("user_id")
     
     if not user_id:
@@ -64,7 +70,7 @@ async def handle_checkout_completed(session):
         # TODO: Map price_id to actual plan (Student vs Pro)
         # For prototype, we'll look at the price amount or ID if needed, 
         # but let's just default to PRO_MONTHLY for testing first cycle.
-        usage_tracker.set_user_plan(user_id, Plan.PRO_MONTHLY)
+        await usage_tracker.set_user_plan(user_id, Plan.PRO_MONTHLY, db_session)
         logger.info(f"Upgraded user {user_id} to PRO_MONTHLY")
         
     elif mode == "payment":
@@ -72,8 +78,8 @@ async def handle_checkout_completed(session):
         amount_total = session.get("amount_total")
         # Example: $2.99 (299 cents) = 10 credits
         if amount_total == 299:
-             usage_tracker.add_credits(user_id, 10)
+             await usage_tracker.add_credits(user_id, 10, db_session)
              logger.info(f"Added 10 credits to user {user_id}")
         elif amount_total == 499:
-             usage_tracker.add_credits(user_id, 25)
+             await usage_tracker.add_credits(user_id, 25, db_session)
              logger.info(f"Added 25 credits to user {user_id}")

@@ -10,11 +10,18 @@ from typing import Optional
 router = APIRouter()
 
 
+from sqlalchemy.ext.asyncio import AsyncSession
+from backend.core.database import get_session
+
 @router.get("/usage")
-async def get_usage(request: Request, current_user: Optional[DBUser] = Depends(get_optional_current_user)):
+async def get_usage(
+    request: Request, 
+    current_user: Optional[DBUser] = Depends(get_optional_current_user),
+    session: AsyncSession = Depends(get_session)
+):
     """Get current user's usage statistics."""
     user_id = current_user.id if current_user else get_user_id_from_request(request)
-    stats = usage_tracker.get_usage_stats(user_id)
+    stats = await usage_tracker.get_usage_stats(user_id, current_user, session)
     
     return {
         "success": True,

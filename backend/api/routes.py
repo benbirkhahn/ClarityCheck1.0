@@ -44,10 +44,10 @@ async def upload_document(
     
     # Check usage limits BEFORE processing
     user_id = current_user.id if current_user else get_user_id_from_request(request)
-    can_upload, remaining, plan = usage_tracker.can_upload(user_id)
+    can_upload, remaining, plan = await usage_tracker.can_upload(user_id, current_user, session)
     
     if not can_upload:
-        usage_stats = usage_tracker.get_usage_stats(user_id)
+        usage_stats = await usage_tracker.get_usage_stats(user_id, current_user, session)
         raise HTTPException(
             status_code=429,  # Too Many Requests
             detail={
@@ -89,7 +89,7 @@ async def upload_document(
         print(f"[{datetime.utcnow()}] Background task scheduled")
         
         # Track successful upload (increment counter)
-        usage_tracker.track_upload(user_id)
+        await usage_tracker.track_upload(user_id, current_user, session)
         print(f"[{datetime.utcnow()}] Usage tracked for {user_id}")
         
     except Exception as e:
@@ -107,7 +107,7 @@ async def upload_document(
         raise HTTPException(status_code=500, detail=f"Upload failed: {e}")
     
     # Get updated usage stats to return to user
-    usage_stats = usage_tracker.get_usage_stats(user_id)
+    usage_stats = await usage_tracker.get_usage_stats(user_id, current_user, session)
     
     return {
         "job_id": job.id,
