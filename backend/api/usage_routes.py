@@ -1,16 +1,19 @@
 """API endpoints for usage statistics."""
 
-from fastapi import APIRouter, Request, HTTPException
+from fastapi import APIRouter, Request, HTTPException, Depends
 from backend.core.usage import usage_tracker
 from backend.core.fingerprint import get_user_id_from_request
+from backend.api.auth_routes import get_optional_current_user
+from backend.core.models import DBUser
+from typing import Optional
 
 router = APIRouter()
 
 
 @router.get("/usage")
-async def get_usage(request: Request):
+async def get_usage(request: Request, current_user: Optional[DBUser] = Depends(get_optional_current_user)):
     """Get current user's usage statistics."""
-    user_id = get_user_id_from_request(request)
+    user_id = current_user.id if current_user else get_user_id_from_request(request)
     stats = usage_tracker.get_usage_stats(user_id)
     
     return {

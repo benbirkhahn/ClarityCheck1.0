@@ -14,8 +14,9 @@ from sqlalchemy.orm import selectinload
 
 from backend.core.models import (
     JobStatus, Report, Finding, Location, Severity,
-    DBJob, DBFinding
+    DBJob, DBFinding, DBUser
 )
+from backend.api.auth_routes import get_optional_current_user
 from pydantic import BaseModel
 from backend.core.analyzer import AnalyzedFinding, TrapType, TrapImpact, TrapAnalysis
 from backend.core.database import get_session
@@ -34,14 +35,15 @@ async def upload_document(
     request: Request,
     background_tasks: BackgroundTasks,
     file: UploadFile = File(..., description="PDF file (max 10MB)"),
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
+    current_user: Optional[DBUser] = Depends(get_optional_current_user)
 ):
     """Upload a PDF for analysis (Async)."""
     if not file.filename.lower().endswith('.pdf'):
         raise HTTPException(status_code=400, detail="Only PDF files are supported")
     
     # Check usage limits BEFORE processing
-    user_id = get_user_id_from_request(request)
+    user_id = current_user.id if current_user else get_user_id_from_request(request)
     can_upload, remaining, plan = usage_tracker.can_upload(user_id)
     
     if not can_upload:
