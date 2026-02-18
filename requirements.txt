@@ -13,6 +13,7 @@ pdfplumber==0.11.9
 # Data validation
 pydantic==2.12.5
 pydantic-settings==2.12.0
+email-validator==2.1.1
 
 # Testing
 pytest==9.0.2
@@ -35,4 +36,4 @@ stripe==14.3.0
 # Auth & Security
 python-jose[cryptography]==3.5.0
 passlib[bcrypt]==1.7.4
-bcrypt==5.0.0
+bcrypt==4.0.1
