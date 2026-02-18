@@ -30,6 +30,11 @@ class Settings(BaseSettings):
     STRIPE_PUBLISHABLE_KEY: str = ""
     STRIPE_WEBHOOK_SECRET: str = ""
 
+    # Auth
+    SECRET_KEY: str = "changethis"  # TODO: Generate a strong key
+    ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+
 
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod

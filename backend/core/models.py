@@ -67,6 +67,17 @@ class Job(BaseModel):
 from typing import List
 from sqlmodel import SQLModel, Relationship, Field as SQLModelField
 
+class DBUser(SQLModel, table=True):
+    __tablename__ = "users"
+    id: str = SQLModelField(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    email: str = SQLModelField(unique=True, index=True)
+    hashed_password: str
+    is_active: bool = True
+    created_at: datetime = SQLModelField(default_factory=datetime.utcnow)
+    
+    jobs: List["DBJob"] = Relationship(back_populates="user")
+
+
 class DBJob(SQLModel, table=True):
     __tablename__ = "jobs"
     id: str = SQLModelField(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
@@ -76,6 +87,10 @@ class DBJob(SQLModel, table=True):
     completed_at: Optional[datetime] = None
     error: Optional[str] = None
     
+    # User Link
+    user_id: Optional[str] = SQLModelField(foreign_key="users.id", default=None)
+    user: Optional[DBUser] = Relationship(back_populates="jobs")
+
     findings: List["DBFinding"] = Relationship(back_populates="job")
     
     # Analysis results

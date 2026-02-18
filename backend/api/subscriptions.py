@@ -1,8 +1,10 @@
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request, Depends
 from backend.core.config import settings
 import stripe
 from backend.core.usage import usage_tracker
 from backend.core.fingerprint import get_user_id_from_request
+from backend.api.auth_routes import get_current_user
+from backend.core.models import DBUser
 from pydantic import BaseModel
 from typing import Optional
 
@@ -15,11 +17,12 @@ class CheckoutSessionRequest(BaseModel):
     user_id: Optional[str] = None
 
 @router.post("/create-checkout-session")
-async def create_checkout_session(request: Request, data: CheckoutSessionRequest):
+async def create_checkout_session(data: CheckoutSessionRequest, current_user: DBUser = Depends(get_current_user)):
     try:
-        user_id = data.user_id or get_user_id_from_request(request)
         if not stripe.api_key:
             raise HTTPException(status_code=500, detail="Stripe not configured")
+
+        user_id = current_user.id
 
         checkout_session = stripe.checkout.Session.create(
             line_items=[
