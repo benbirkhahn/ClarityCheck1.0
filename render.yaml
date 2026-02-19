@@ -40,6 +40,19 @@ services:
           name: clarity-api
           envVarKey: RENDER_EXTERNAL_URL
 
+  # 5. Landing Page (Static Site — no build needed)
+  - type: web
+    name: clarity-landing
+    runtime: static
+    branch: main
+    rootDir: landing
+    buildCommand: echo "No build needed"
+    staticPublishPath: .
+    routes:
+      - type: rewrite
+        source: /
+        destination: /index.html
+
 databases:
   # 5. Managed Postgres
   - name: clarity-db
