@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>About — ClarityCheck</title>
+    <meta name="description"
+        content="Learn about ClarityCheck's mission to protect documents from hidden AI traps, our technology, and where we're headed.">
+    <link rel="icon" type="image/png" href="logo.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="legal.css">
+    <style>
+        /* ===== ABOUT-SPECIFIC STYLES ===== */
+        .mission-statement {
+            max-width: 700px;
+            margin: 0 auto;
+            text-align: center;
+            padding: 0 24px 80px;
+        }
+
+        .mission-statement p {
+            font-size: 18px;
+            color: var(--slate-300);
+            line-height: 1.8;
+        }
+
+        .mission-statement p strong {
+            color: white;
+        }
+
+        /* Stats bar */
+        .stats-bar {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1px;
+            background: rgba(255, 255, 255, 0.06);
+            border-radius: 20px;
+            overflow: hidden;
+            max-width: 900px;
+            margin: 0 auto 80px;
+        }
+
+        .stat-item {
+            padding: 32px 20px;
+            text-align: center;
+            background: var(--slate-950);
+        }
+
+        .stat-item .stat-number {
+            font-size: 36px;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--blue-500), var(--emerald-400));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 4px;
+        }
+
+        .stat-item .stat-label {
+            font-size: 13px;
+            color: var(--slate-500);
+            font-weight: 500;
+        }
+
+        /* Tech section */
+        .about-section {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 0 24px 80px;
+        }
+
+        .about-section-header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .about-section-header h2 {
+            font-size: 28px;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            margin-bottom: 8px;
+        }
+
+        .about-section-header p {
+            color: var(--slate-400);
+            font-size: 15px;
+        }
+
+        .tech-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+        }
+
+        .tech-card {
+            padding: 28px;
+            border-radius: 16px;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            transition: all 0.3s ease;
+        }
+
+        .tech-card:hover {
+            border-color: rgba(59, 130, 246, 0.15);
+            transform: translateY(-2px);
+        }
+
+        .tech-card .tech-icon {
+            font-size: 24px;
+            margin-bottom: 12px;
+        }
+
+        .tech-card h3 {
+            font-size: 16px;
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+
+        .tech-card p {
+            font-size: 14px;
+            color: var(--slate-400);
+            line-height: 1.7;
+        }
+
+        .tech-card .tech-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 12px;
+        }
+
+        .tech-tag {
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            background: rgba(59, 130, 246, 0.08);
+            color: var(--blue-500);
+            border: 1px solid rgba(59, 130, 246, 0.15);
+        }
+
+        /* Roadmap */
+        .roadmap {
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+            position: relative;
+        }
+
+        .roadmap::before {
+            content: '';
+            position: absolute;
+            left: 15px;
+            top: 8px;
+            bottom: 8px;
+            width: 2px;
+            background: linear-gradient(to bottom, var(--blue-500), var(--emerald-500), rgba(255, 255, 255, 0.05));
+        }
+
+        .roadmap-item {
+            display: flex;
+            gap: 24px;
+            padding: 20px 0;
+            position: relative;
+        }
+
+        .roadmap-dot {
+            width: 32px;
+            height: 32px;
+            flex-shrink: 0;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            z-index: 1;
+        }
+
+        .roadmap-dot.done {
+            background: rgba(16, 185, 129, 0.15);
+            border: 2px solid var(--emerald-500);
+        }
+
+        .roadmap-dot.active {
+            background: rgba(59, 130, 246, 0.15);
+            border: 2px solid var(--blue-500);
+            box-shadow: 0 0 12px rgba(59, 130, 246, 0.3);
+        }
+
+        .roadmap-dot.upcoming {
+            background: rgba(255, 255, 255, 0.03);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .roadmap-body h3 {
+            font-size: 16px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .roadmap-body p {
+            font-size: 14px;
+            color: var(--slate-400);
+            line-height: 1.6;
+        }
+
+        .roadmap-body .roadmap-tag {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+
+        .tag-complete {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--emerald-500);
+        }
+
+        .tag-current {
+            background: rgba(59, 130, 246, 0.1);
+            color: var(--blue-500);
+        }
+
+        .tag-planned {
+            background: rgba(255, 255, 255, 0.04);
+            color: var(--slate-500);
+        }
+
+        /* CTA */
+        .about-cta {
+            text-align: center;
+            padding: 60px 24px 120px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .about-cta h2 {
+            font-size: 28px;
+            font-weight: 800;
+            margin-bottom: 12px;
+        }
+
+        .about-cta p {
+            color: var(--slate-400);
+            font-size: 15px;
+            margin-bottom: 24px;
+        }
+
+        .about-cta .btn-group {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        @media (max-width: 768px) {
+            .stats-bar {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .tech-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .stats-bar {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <nav class="navbar">
+        <div class="container">
+            <a href="index.html" class="nav-brand">
+                <img src="logo.png" alt="ClarityCheck">
+                <span>ClarityCheck</span>
+            </a>
+            <ul class="nav-links">
+                <li><a href="index.html">Home</a></li>
+                <li><a href="index.html#demo">Try It</a></li>
+                <li><a href="about.html" class="active">About</a></li>
+                <li><a href="privacy.html">Privacy</a></li>
+                <li><a href="terms.html">Terms</a></li>
+                <li><a href="index.html#waitlist" class="btn btn-primary btn-sm">Get Early Access</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- HEADER -->
+    <section class="page-header">
+        <div class="container">
+            <h1>About <span class="gradient-text">ClarityCheck</span></h1>
+            <p>Making invisible document threats visible — so you can work with AI safely.</p>
+        </div>
+    </section>
+
+    <!-- MISSION -->
+    <div class="mission-statement">
+        <p>
+            PDFs are everywhere — in education, business, and government. But most people don't realize their documents
+            can contain
+            <strong>hidden instructions that manipulate AI tools</strong>, invisible tracking watermarks, and content
+            designed to deceive.
+            ClarityCheck was built to solve that problem. We give you <strong>full visibility into what's really inside
+                your documents</strong>
+            — before you share them with AI assistants, colleagues, or the world.
+        </p>
+    </div>
+
+    <!-- STATS -->
+    <div class="container">
+        <div class="stats-bar">
+            <div class="stat-item">
+                <div class="stat-number">11</div>
+                <div class="stat-label">Detection Engines</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number">PDF</div>
+                <div class="stat-label">Deep Structure Analysis</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number">AI</div>
+                <div class="stat-label">Powered Classification</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number">🔒</div>
+                <div class="stat-label">Encrypted & Auto-Deleted</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TECHNOLOGY -->
+    <div class="about-section">
+        <div class="about-section-header">
+            <h2>Our Technology</h2>
+            <p>A multi-layered analysis engine that catches what the human eye can't see.</p>
+        </div>
+        <div class="tech-grid">
+            <div class="tech-card">
+                <div class="tech-icon">🔍</div>
+                <h3>Visual Analysis</h3>
+                <p>Renders PDF pages and inspects for color-matched text, tiny fonts, and elements positioned outside
+                    visible boundaries.</p>
+                <div class="tech-tags">
+                    <span class="tech-tag">PyMuPDF</span>
+                    <span class="tech-tag">pdfplumber</span>
+                    <span class="tech-tag">pdf.js</span>
+                </div>
+            </div>
+            <div class="tech-card">
+                <div class="tech-icon">🏗️</div>
+                <h3>Structural Analysis</h3>
+                <p>Parses raw PDF operators and content streams to detect invisible rendering modes, layered text, and
+                    hidden annotations.</p>
+                <div class="tech-tags">
+                    <span class="tech-tag">Content Streams</span>
+                    <span class="tech-tag">Operator Parsing</span>
+                </div>
+            </div>
+            <div class="tech-card">
+                <div class="tech-icon">🧬</div>
+                <h3>Character Analysis</h3>
+                <p>Scans text for zero-width Unicode characters, suspicious spacing patterns, and invisible character
+                    sequences used as watermarks.</p>
+                <div class="tech-tags">
+                    <span class="tech-tag">Unicode</span>
+                    <span class="tech-tag">Zero-Width</span>
+                    <span class="tech-tag">Spacing</span>
+                </div>
+            </div>
+            <div class="tech-card">
+                <div class="tech-icon">🤖</div>
+                <h3>AI Classification</h3>
+                <p>Uses large language models to semantically classify detected hidden text — distinguishing real
+                    threats from benign formatting artifacts.</p>
+                <div class="tech-tags">
+                    <span class="tech-tag">LLM</span>
+                    <span class="tech-tag">Semantic Analysis</span>
+                    <span class="tech-tag">Intent Detection</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ROADMAP -->
+    <div class="about-section">
+        <div class="about-section-header">
+            <h2>Roadmap</h2>
+            <p>Where we've been and where we're going. Transparency matters.</p>
+        </div>
+        <div class="roadmap">
+            <div class="roadmap-item">
+                <div class="roadmap-dot done">✓</div>
+                <div class="roadmap-body">
+                    <span class="roadmap-tag tag-complete">Complete</span>
+                    <h3>Core Detection Engine</h3>
+                    <p>11 specialized detectors for hidden text, AI traps, tracking watermarks, and structural
+                        anomalies. Full PDF upload and analysis pipeline.</p>
+                </div>
+            </div>
+            <div class="roadmap-item">
+                <div class="roadmap-dot done">✓</div>
+                <div class="roadmap-body">
+                    <span class="roadmap-tag tag-complete">Complete</span>
+                    <h3>AI-Powered Classification</h3>
+                    <p>LLM-based semantic analysis to classify detected hidden content as benign, suspicious, or
+                        malicious — reducing false positives.</p>
+                </div>
+            </div>
+            <div class="roadmap-item">
+                <div class="roadmap-dot done">✓</div>
+                <div class="roadmap-body">
+                    <span class="roadmap-tag tag-complete">Complete</span>
+                    <h3>Cleaned PDF Output</h3>
+                    <p>Automatic removal of detected threats and generation of a sanitized PDF you can safely share with
+                        AI tools.</p>
+                </div>
+            </div>
+            <div class="roadmap-item">
+                <div class="roadmap-dot active">→</div>
+                <div class="roadmap-body">
+                    <span class="roadmap-tag tag-current">In Progress</span>
+                    <h3>Chrome Extension</h3>
+                    <p>One-click PDF scanning directly in your browser. No uploads, no context switching — scan
+                        documents as you encounter them.</p>
+                </div>
+            </div>
+            <div class="roadmap-item">
+                <div class="roadmap-dot upcoming">○</div>
+                <div class="roadmap-body">
+                    <span class="roadmap-tag tag-planned">Planned</span>
+                    <h3>Client-Side Text Scanner</h3>
+                    <p>Instantly detect zero-width characters and invisible Unicode in any text — right in the browser,
+                        no upload needed.</p>
+                </div>
+            </div>
+            <div class="roadmap-item">
+                <div class="roadmap-dot upcoming">○</div>
+                <div class="roadmap-body">
+                    <span class="roadmap-tag tag-planned">Planned</span>
+                    <h3>API & Integrations</h3>
+                    <p>REST API for automating document scanning in your workflows. Integrate ClarityCheck into CI/CD
+                        pipelines, document management systems, and LLM toolchains.</p>
+                </div>
+            </div>
+            <div class="roadmap-item">
+                <div class="roadmap-dot upcoming">○</div>
+                <div class="roadmap-body">
+                    <span class="roadmap-tag tag-planned">Planned</span>
+                    <h3>Team Dashboard</h3>
+                    <p>Centralized scanning for organizations. Shared reports, admin controls, and compliance-ready
+                        audit trails.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- CTA -->
+    <div class="about-cta">
+        <h2>Ready to see what's <span class="gradient-text">hidden</span>?</h2>
+        <p>Try ClarityCheck for free — upload a PDF and see what you've been missing.</p>
+        <div class="btn-group">
+            <a href="index.html#demo" class="btn btn-primary">Try It Free</a>
+            <a href="index.html#waitlist" class="btn btn-secondary">Get Early Access</a>
+        </div>
+    </div>
+
+    <!-- FOOTER -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-grid">
+                <div class="footer-brand">
+                    <a href="index.html" class="nav-brand" style="margin-bottom:4px;">
+                        <img src="logo.png" alt="ClarityCheck" style="width:32px;height:32px;">
+                        <span style="font-size:18px;font-weight:700;color:white;">ClarityCheck</span>
+                    </a>
+                    <p>Detect hidden AI traps, invisible text, and tracking watermarks in your PDFs.</p>
+                </div>
+                <div class="footer-col">
+                    <h4>Product</h4>
+                    <ul>
+                        <li><a href="index.html#demo">Try It Free</a></li>
+                        <li><a href="index.html#how-it-works">How It Works</a></li>
+                        <li><a href="index.html#pricing">Pricing</a></li>
+                    </ul>
+                </div>
+                <div class="footer-col">
+                    <h4>Company</h4>
+                    <ul>
+                        <li><a href="about.html">About</a></li>
+                        <li><a href="privacy.html">Privacy Policy</a></li>
+                        <li><a href="terms.html">Terms of Service</a></li>
+                    </ul>
+                </div>
+                <div class="footer-col">
+                    <h4>Contact</h4>
+                    <ul>
+                        <li><a href="mailto:support@claritycheck.app">support@claritycheck.app</a></li>
+                        <li><a href="index.html#waitlist">Join Waitlist</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>© 2026 ClarityCheck. All rights reserved.</p>
+                <div class="trust-badges">
+                    <span class="trust-badge"><span class="dot"></span> Encrypted processing</span>
+                    <span class="trust-badge"><span class="dot"></span> Auto-deleted files</span>
+                    <span class="trust-badge"><span class="dot"></span> 11 detection engines</span>
+                </div>
+            </div>
+        </div>
+    </footer>
+</body>
+
+</html>

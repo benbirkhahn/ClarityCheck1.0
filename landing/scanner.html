@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Text Scanner — ClarityCheck</title>
+    <meta name="description"
+        content="Free client-side text scanner. Instantly detect zero-width characters, invisible Unicode, and hidden watermarks in any text. No uploads, no tracking.">
+    <link rel="icon" type="image/png" href="logo.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="legal.css">
+    <style>
+        /* ===== SCANNER-SPECIFIC ===== */
+        .scanner-section {
+            padding: 60px 0 120px;
+            max-width: 960px;
+            margin: 0 auto;
+        }
+
+        .privacy-banner {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 20px;
+            border-radius: 12px;
+            background: rgba(16, 185, 129, 0.06);
+            border: 1px solid rgba(16, 185, 129, 0.15);
+            margin-bottom: 32px;
+            font-size: 13px;
+            color: var(--emerald-400);
+        }
+
+        .privacy-banner .pb-icon {
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+
+        /* Toggle grid */
+        .toggle-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 8px;
+            margin-bottom: 24px;
+        }
+
+        .toggle-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 14px;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            cursor: pointer;
+            transition: all 0.2s;
+            user-select: none;
+        }
+
+        .toggle-item:hover {
+            border-color: rgba(59, 130, 246, 0.2);
+        }
+
+        .toggle-item.active {
+            border-color: rgba(59, 130, 246, 0.3);
+            background: rgba(59, 130, 246, 0.05);
+        }
+
+        .toggle-item input {
+            display: none;
+        }
+
+        .toggle-dot {
+            width: 16px;
+            height: 16px;
+            border-radius: 4px;
+            border: 2px solid rgba(255, 255, 255, 0.15);
+            flex-shrink: 0;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .toggle-item.active .toggle-dot {
+            border-color: var(--blue-500);
+            background: var(--blue-500);
+        }
+
+        .toggle-item.active .toggle-dot::after {
+            content: '✓';
+            color: white;
+            font-size: 10px;
+            font-weight: 700;
+        }
+
+        .toggle-label {
+            font-size: 13px;
+            color: var(--slate-400);
+            font-weight: 500;
+        }
+
+        .toggle-item.active .toggle-label {
+            color: var(--slate-200);
+        }
+
+        /* Textarea area */
+        .input-area {
+            position: relative;
+            margin-bottom: 16px;
+        }
+
+        .input-area textarea {
+            width: 100%;
+            min-height: 200px;
+            padding: 20px;
+            border-radius: 16px;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            color: var(--slate-100);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+            resize: vertical;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        .input-area textarea:focus {
+            border-color: rgba(59, 130, 246, 0.4);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .input-area textarea::placeholder {
+            color: var(--slate-600);
+        }
+
+        .char-count {
+            position: absolute;
+            bottom: 12px;
+            right: 16px;
+            font-size: 12px;
+            color: var(--slate-600);
+        }
+
+        .action-row {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 32px;
+            flex-wrap: wrap;
+        }
+
+        .action-row .btn {
+            font-size: 14px;
+        }
+
+        /* Results */
+        .results-panel {
+            display: none;
+        }
+
+        .results-panel.visible {
+            display: block;
+        }
+
+        .results-summary {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .result-stat {
+            padding: 20px;
+            border-radius: 14px;
+            text-align: center;
+        }
+
+        .result-stat.clean {
+            background: rgba(16, 185, 129, 0.06);
+            border: 1px solid rgba(16, 185, 129, 0.15);
+        }
+
+        .result-stat.warning {
+            background: rgba(245, 158, 11, 0.06);
+            border: 1px solid rgba(245, 158, 11, 0.15);
+        }
+
+        .result-stat.danger {
+            background: rgba(239, 68, 68, 0.06);
+            border: 1px solid rgba(239, 68, 68, 0.15);
+        }
+
+        .result-stat .rs-number {
+            font-size: 32px;
+            font-weight: 800;
+            margin-bottom: 2px;
+        }
+
+        .result-stat.clean .rs-number {
+            color: var(--emerald-500);
+        }
+
+        .result-stat.warning .rs-number {
+            color: var(--amber-500);
+        }
+
+        .result-stat.danger .rs-number {
+            color: var(--red-500);
+        }
+
+        .result-stat .rs-label {
+            font-size: 12px;
+            color: var(--slate-500);
+            font-weight: 500;
+        }
+
+        .findings-list {
+            margin-bottom: 24px;
+        }
+
+        .finding-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 14px;
+            padding: 16px 20px;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            margin-bottom: 8px;
+        }
+
+        .finding-icon {
+            font-size: 18px;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+
+        .finding-body h4 {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .finding-body p {
+            font-size: 13px;
+            color: var(--slate-400);
+            line-height: 1.5;
+        }
+
+        .finding-body .finding-positions {
+            margin-top: 6px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            color: var(--slate-600);
+        }
+
+        .clean-output {
+            margin-top: 24px;
+        }
+
+        .clean-output h3 {
+            font-size: 16px;
+            font-weight: 700;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .clean-output textarea {
+            width: 100%;
+            min-height: 120px;
+            padding: 16px;
+            border-radius: 12px;
+            background: rgba(16, 185, 129, 0.03);
+            border: 1px solid rgba(16, 185, 129, 0.12);
+            color: var(--slate-100);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+            resize: vertical;
+            outline: none;
+        }
+
+        .no-findings {
+            text-align: center;
+            padding: 40px 20px;
+            border-radius: 16px;
+            background: rgba(16, 185, 129, 0.04);
+            border: 1px solid rgba(16, 185, 129, 0.12);
+        }
+
+        .no-findings .nf-icon {
+            font-size: 36px;
+            margin-bottom: 12px;
+        }
+
+        .no-findings h3 {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--emerald-400);
+            margin-bottom: 6px;
+        }
+
+        .no-findings p {
+            font-size: 14px;
+            color: var(--slate-400);
+        }
+
+        /* CTA upgrade */
+        .scanner-upsell {
+            margin-top: 40px;
+            padding: 28px;
+            border-radius: 16px;
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.06), rgba(16, 185, 129, 0.06));
+            border: 1px solid rgba(59, 130, 246, 0.12);
+            text-align: center;
+        }
+
+        .scanner-upsell h3 {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+
+        .scanner-upsell p {
+            font-size: 14px;
+            color: var(--slate-400);
+            margin-bottom: 16px;
+        }
+
+        @media (max-width: 768px) {
+            .results-summary {
+                grid-template-columns: 1fr;
+            }
+
+            .toggle-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <nav class="navbar">
+        <div class="container">
+            <a href="index.html" class="nav-brand">
+                <img src="logo.png" alt="ClarityCheck">
+                <span>ClarityCheck</span>
+            </a>
+            <ul class="nav-links">
+                <li><a href="index.html">Home</a></li>
+                <li><a href="scanner.html" class="active">Text Scanner</a></li>
+                <li><a href="about.html">About</a></li>
+                <li><a href="privacy.html">Privacy</a></li>
+                <li><a href="terms.html">Terms</a></li>
+                <li><a href="index.html#waitlist" class="btn btn-primary btn-sm">Get Early Access</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <section class="page-header">
+        <div class="container">
+            <h1>Text <span class="gradient-text">Scanner</span></h1>
+            <p>Instantly detect zero-width characters, invisible Unicode, and hidden watermarks in any text. 100%
+                client-side — your text never leaves your browser.</p>
+        </div>
+    </section>
+
+    <div class="container">
+        <div class="scanner-section">
+
+            <div class="privacy-banner">
+                <span class="pb-icon">🛡️</span>
+                <span><strong>Privacy-first:</strong> All analysis runs in your browser. No data is sent to any server.
+                    Your text stays on your device.</span>
+            </div>
+
+            <!-- Detection toggles -->
+            <div class="toggle-grid" id="toggleGrid"></div>
+
+            <!-- Input -->
+            <div class="input-area">
+                <textarea id="inputText"
+                    placeholder="Paste or type text here to scan for hidden characters..."></textarea>
+                <span class="char-count" id="charCount">0 characters</span>
+            </div>
+
+            <div class="action-row">
+                <button class="btn btn-primary" id="analyzeBtn" onclick="analyzeText()">🔍 Analyze Text</button>
+                <button class="btn btn-secondary" onclick="clearAll()">Clear</button>
+                <button class="btn btn-secondary" id="copyCleanBtn" onclick="copyClean()" style="display:none;">📋 Copy
+                    Cleaned Text</button>
+            </div>
+
+            <!-- Results -->
+            <div class="results-panel" id="resultsPanel">
+                <div id="resultsContent"></div>
+            </div>
+
+            <!-- Upsell -->
+            <div class="scanner-upsell">
+                <h3>Need deeper analysis? 📄</h3>
+                <p>This scanner checks plain text. For full PDF analysis — including invisible rendering, hidden layers,
+                    AI trap detection, and structural anomalies — try ClarityCheck's PDF scanner.</p>
+                <a href="index.html#demo" class="btn btn-primary">Try PDF Scanner Free</a>
+            </div>
+
+        </div>
+    </div>
+
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-grid">
+                <div class="footer-brand">
+                    <a href="index.html" class="nav-brand" style="margin-bottom:4px;">
+                        <img src="logo.png" alt="ClarityCheck" style="width:32px;height:32px;">
+                        <span style="font-size:18px;font-weight:700;color:white;">ClarityCheck</span>
+                    </a>
+                    <p>Detect hidden AI traps, invisible text, and tracking watermarks in your PDFs.</p>
+                </div>
+                <div class="footer-col">
+                    <h4>Product</h4>
+                    <ul>
+                        <li><a href="index.html#demo">Try PDF Scanner</a></li>
+                        <li><a href="scanner.html">Text Scanner</a></li>
+                        <li><a href="index.html#pricing">Pricing</a></li>
+                    </ul>
+                </div>
+                <div class="footer-col">
+                    <h4>Company</h4>
+                    <ul>
+                        <li><a href="about.html">About</a></li>
+                        <li><a href="privacy.html">Privacy Policy</a></li>
+                        <li><a href="terms.html">Terms of Service</a></li>
+                    </ul>
+                </div>
+                <div class="footer-col">
+                    <h4>Contact</h4>
+                    <ul>
+                        <li><a href="mailto:support@claritycheck.app">support@claritycheck.app</a></li>
+                        <li><a href="index.html#waitlist">Join Waitlist</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>© 2026 ClarityCheck. All rights reserved.</p>
+                <div class="trust-badges">
+                    <span class="trust-badge"><span class="dot"></span> 100% client-side</span>
+                    <span class="trust-badge"><span class="dot"></span> No data sent</span>
+                    <span class="trust-badge"><span class="dot"></span> Open analysis</span>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // ===== DETECTION TYPES =====
+        const DETECTORS = [
+            { id: 'zwsp', name: 'Zero Width Space', char: '\u200B', hex: 'U+200B', enabled: true },
+            { id: 'zwnj', name: 'Zero Width Non-Joiner', char: '\u200C', hex: 'U+200C', enabled: true },
+            { id: 'zwj', name: 'Zero Width Joiner', char: '\u200D', hex: 'U+200D', enabled: true },
+            { id: 'wj', name: 'Word Joiner', char: '\u2060', hex: 'U+2060', enabled: true },
+            { id: 'bom', name: 'BOM / Zero Width No-Break', char: '\uFEFF', hex: 'U+FEFF', enabled: true },
+            { id: 'shy', name: 'Soft Hyphen', char: '\u00AD', hex: 'U+00AD', enabled: true },
+            { id: 'lrm', name: 'Left-to-Right Mark', char: '\u200E', hex: 'U+200E', enabled: true },
+            { id: 'rlm', name: 'Right-to-Left Mark', char: '\u200F', hex: 'U+200F', enabled: true },
+            { id: 'hair', name: 'Hair Space', char: '\u200A', hex: 'U+200A', enabled: true },
+            { id: 'thinsp', name: 'Thin Space', char: '\u2009', hex: 'U+2009', enabled: true },
+            { id: 'nnbsp', name: 'Narrow No-Break Space', char: '\u202F', hex: 'U+202F', enabled: true },
+            { id: 'mmsp', name: 'Medium Math Space', char: '\u205F', hex: 'U+205F', enabled: true },
+            { id: 'idsp', name: 'Ideographic Space', char: '\u3000', hex: 'U+3000', enabled: true },
+            { id: 'ensp', name: 'En Space', char: '\u2002', hex: 'U+2002', enabled: true },
+            { id: 'emsp', name: 'Em Space', char: '\u2003', hex: 'U+2003', enabled: true },
+            { id: 'figsp', name: 'Figure Space', char: '\u2007', hex: 'U+2007', enabled: true },
+        ];
+
+        // ===== BUILD TOGGLE UI =====
+        const toggleGrid = document.getElementById('toggleGrid');
+        DETECTORS.forEach(d => {
+            const el = document.createElement('label');
+            el.className = 'toggle-item' + (d.enabled ? ' active' : '');
+            el.innerHTML = `
+            <input type="checkbox" ${d.enabled ? 'checked' : ''} data-id="${d.id}">
+            <span class="toggle-dot"></span>
+            <span class="toggle-label">${d.name}</span>
+        `;
+            el.querySelector('input').addEventListener('change', function () {
+                d.enabled = this.checked;
+                el.classList.toggle('active', this.checked);
+            });
+            toggleGrid.appendChild(el);
+        });
+
+        // ===== CHARACTER COUNT =====
+        const inputText = document.getElementById('inputText');
+        const charCount = document.getElementById('charCount');
+        inputText.addEventListener('input', () => {
+            charCount.textContent = inputText.value.length.toLocaleString() + ' characters';
+        });
+
+        // ===== ANALYZE =====
+        function analyzeText() {
+            const text = inputText.value;
+            if (!text.trim()) return;
+
+            const enabledDetectors = DETECTORS.filter(d => d.enabled);
+            const findings = [];
+            let totalFound = 0;
+
+            enabledDetectors.forEach(detector => {
+                const positions = [];
+                for (let i = 0; i < text.length; i++) {
+                    if (text[i] === detector.char) {
+                        positions.push(i);
+                    }
+                }
+                if (positions.length > 0) {
+                    findings.push({
+                        ...detector,
+                        count: positions.length,
+                        positions: positions.slice(0, 20) // Show first 20
+                    });
+                    totalFound += positions.length;
+                }
+            });
+
+            // Also check for suspicious spacing patterns
+            const multiSpaceMatches = text.match(/  +/g);
+            const tabMatches = text.match(/\t/g);
+
+            renderResults(findings, totalFound, text, multiSpaceMatches, tabMatches);
+        }
+
+        function renderResults(findings, totalFound, originalText, multiSpaces, tabs) {
+            const panel = document.getElementById('resultsPanel');
+            const content = document.getElementById('resultsContent');
+            const copyBtn = document.getElementById('copyCleanBtn');
+
+            if (findings.length === 0 && !multiSpaces && !tabs) {
+                content.innerHTML = `
+                <div class="no-findings">
+                    <div class="nf-icon">✅</div>
+                    <h3>Text Looks Clean</h3>
+                    <p>No invisible characters or suspicious patterns detected in your text.</p>
+                </div>
+            `;
+                copyBtn.style.display = 'none';
+            } else {
+                const severity = totalFound > 10 ? 'danger' : totalFound > 0 ? 'warning' : 'clean';
+                const types = findings.length;
+                const spacingIssues = (multiSpaces ? multiSpaces.length : 0) + (tabs ? tabs.length : 0);
+
+                let html = `
+                <div class="results-summary">
+                    <div class="result-stat ${severity}">
+                        <div class="rs-number">${totalFound}</div>
+                        <div class="rs-label">Hidden Characters Found</div>
+                    </div>
+                    <div class="result-stat ${types > 0 ? 'warning' : 'clean'}">
+                        <div class="rs-number">${types}</div>
+                        <div class="rs-label">Character Types</div>
+                    </div>
+                    <div class="result-stat ${spacingIssues > 0 ? 'warning' : 'clean'}">
+                        <div class="rs-number">${spacingIssues}</div>
+                        <div class="rs-label">Spacing Anomalies</div>
+                    </div>
+                </div>
+                <div class="findings-list">
+            `;
+
+                findings.forEach(f => {
+                    html += `
+                    <div class="finding-item">
+                        <span class="finding-icon">⚠️</span>
+                        <div class="finding-body">
+                            <h4>${f.name} <span style="color: var(--slate-500); font-weight: 400;">(${f.hex})</span></h4>
+                            <p>Found <strong>${f.count}</strong> instance${f.count > 1 ? 's' : ''} of this invisible character.</p>
+                            <div class="finding-positions">Positions: ${f.positions.join(', ')}${f.count > 20 ? '...' : ''}</div>
+                        </div>
+                    </div>
+                `;
+                });
+
+                if (multiSpaces) {
+                    html += `
+                    <div class="finding-item">
+                        <span class="finding-icon">📏</span>
+                        <div class="finding-body">
+                            <h4>Multiple Consecutive Spaces</h4>
+                            <p>Found <strong>${multiSpaces.length}</strong> instance${multiSpaces.length > 1 ? 's' : ''} of multiple spaces in a row. This may indicate hidden spacing watermarks.</p>
+                        </div>
+                    </div>
+                `;
+                }
+
+                html += '</div>';
+
+                // Generate cleaned text
+                let cleanText = originalText;
+                DETECTORS.filter(d => d.enabled).forEach(d => {
+                    cleanText = cleanText.split(d.char).join('');
+                });
+
+                html += `
+                <div class="clean-output">
+                    <h3>✨ Cleaned Text</h3>
+                    <textarea id="cleanedText" readonly>${cleanText}</textarea>
+                </div>
+            `;
+
+                content.innerHTML = html;
+                copyBtn.style.display = 'inline-flex';
+            }
+
+            panel.classList.add('visible');
+            panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        function copyClean() {
+            const cleaned = document.getElementById('cleanedText');
+            if (cleaned) {
+                cleaned.select();
+                document.execCommand('copy');
+                const btn = document.getElementById('copyCleanBtn');
+                btn.textContent = '✓ Copied!';
+                setTimeout(() => { btn.textContent = '📋 Copy Cleaned Text'; }, 2000);
+            }
+        }
+
+        function clearAll() {
+            inputText.value = '';
+            charCount.textContent = '0 characters';
+            document.getElementById('resultsPanel').classList.remove('visible');
+            document.getElementById('copyCleanBtn').style.display = 'none';
+        }
+    </script>
+
+</body>
+
+</html>
