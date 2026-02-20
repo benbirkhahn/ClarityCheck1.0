@@ -34,6 +34,7 @@ class Settings(BaseSettings):
     SECRET_KEY: str = "changethis"  # TODO: Generate a strong key
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    ADMIN_EMAILS: Union[List[str], str] = []
 
 
     @field_validator("CORS_ORIGINS", mode="before")
@@ -44,6 +45,15 @@ class Settings(BaseSettings):
         elif isinstance(v, (list, str)):
              return v
         raise ValueError(v)
+
+    @field_validator("ADMIN_EMAILS", mode="before")
+    @classmethod
+    def assemble_admin_emails(cls, v: Union[str, List[str]]) -> List[str]:
+        if isinstance(v, str) and v:
+            return [i.strip().lower() for i in v.split(",")]
+        elif isinstance(v, list):
+            return [i.strip().lower() for i in v]
+        return []
     
     class Config:
         env_file = ".env"

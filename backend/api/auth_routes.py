@@ -12,6 +12,9 @@ from backend.core.config import settings
 from backend.core.database import get_session
 from backend.core.models import DBUser
 
+def _is_admin_email(email: str) -> bool:
+    return email.lower() in settings.ADMIN_EMAILS
+
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/token")
@@ -84,7 +87,8 @@ async def register(user_in: UserCreate, session: AsyncSession = Depends(get_sess
     
     user = DBUser(
         email=user_in.email,
-        hashed_password=get_password_hash(user_in.password)
+        hashed_password=get_password_hash(user_in.password),
+        is_admin=_is_admin_email(user_in.email)
     )
     session.add(user)
     await session.commit()
@@ -104,6 +108,12 @@ async def login_for_access_token(form_data: Annotated[OAuth2PasswordRequestForm,
             detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
+    
+    # Auto-promote to admin if email is in ADMIN_EMAILS
+    if _is_admin_email(user.email) and not user.is_admin:
+        user.is_admin = True
+        session.add(user)
+        await session.commit()
         
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(

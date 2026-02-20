@@ -44,6 +44,16 @@ async def init_db():
     async with engine.begin() as conn:
         # await conn.run_sync(SQLModel.metadata.drop_all)
         await conn.run_sync(SQLModel.metadata.create_all)
+        
+        # Migrate: add is_admin column if it doesn't exist
+        try:
+            from sqlalchemy import text
+            await conn.execute(text(
+                "ALTER TABLE users ADD COLUMN is_admin BOOLEAN DEFAULT FALSE"
+            ))
+        except Exception:
+            # Column already exists — safe to ignore
+            pass
 
 async def get_session() -> AsyncGenerator[AsyncSession, None]:
     async_session = sessionmaker(
