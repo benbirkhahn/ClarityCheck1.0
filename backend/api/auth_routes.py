@@ -18,6 +18,7 @@ def _is_admin_email(email: str) -> bool:
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/token")
+optional_oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/token", auto_error=False)
 
 # Pydantic models
 class UserCreate(BaseModel):
@@ -55,7 +56,7 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)], sessio
         raise credentials_exception
     return user
 
-async def get_optional_current_user(token: Annotated[Optional[str], Depends(oauth2_scheme)] = None, session: AsyncSession = Depends(get_session)):
+async def get_optional_current_user(token: Annotated[Optional[str], Depends(optional_oauth2_scheme)] = None, session: AsyncSession = Depends(get_session)):
     """
     Return user if token is valid, otherwise None.
     Do NOT raise 401.
