@@ -73,6 +73,7 @@ class DBUser(SQLModel, table=True):
     email: str = SQLModelField(unique=True, index=True)
     hashed_password: str
     is_active: bool = True
+    is_admin: bool = SQLModelField(default=False)
     created_at: datetime = SQLModelField(default_factory=datetime.utcnow)
     
     # Usage Tracking

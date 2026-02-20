@@ -141,6 +141,11 @@ class UsageTracker:
     
     async def can_upload(self, user_id: str, db_user: Optional[object] = None, session: Optional[object] = None) -> Tuple[bool, int, Plan]:
         """Check if user can upload. Handles reset logic for DB users."""
+        # Admin bypass
+        if db_user and getattr(db_user, 'is_admin', False):
+            plan = self.get_user_plan(user_id, db_user)
+            return True, -1, plan
+
         plan = self.get_user_plan(user_id, db_user)
         limit = PLAN_LIMITS[plan]
         
@@ -251,20 +256,24 @@ class UsageTracker:
         usage = self.get_monthly_usage(user_id, db_user)
         credits = self.get_credits(user_id, db_user)
         limit = PLAN_LIMITS[plan]
+        is_admin = db_user and getattr(db_user, 'is_admin', False)
         
-        effective_limit = limit + credits if limit != -1 else -1
-        effective_usage = usage
-        effective_remaining = effective_limit - effective_usage if effective_limit != -1 else -1
+        if is_admin:
+            effective_limit = -1
+            effective_remaining = -1
+        else:
+            effective_limit = limit + credits if limit != -1 else -1
+            effective_remaining = effective_limit - usage if effective_limit != -1 else -1
         
         return {
-            "plan": plan.value,
-            "limit": limit,
+            "plan": "admin" if is_admin else plan.value,
+            "limit": -1 if is_admin else limit,
             "usage": usage,
             "credits": credits,
             "effective_limit": effective_limit,
             "effective_remaining": effective_remaining,
-            "is_unlimited": limit == -1,
-            "can_upload": effective_remaining > 0 or limit == -1,
+            "is_unlimited": is_admin or limit == -1,
+            "can_upload": is_admin or effective_remaining > 0 or limit == -1,
             "reset_date": self._get_next_month_start().isoformat()
         }
     
