@@ -5,10 +5,9 @@ interface SidebarProps {
     onSanitize: () => void;
     onStartDrawing: () => void;
     onEditFinding?: (finding: Finding | ManualFinding) => void;
-    onUpgrade?: () => void;
 }
 
-export default function Sidebar({ onSanitize, onStartDrawing, onEditFinding, onUpgrade }: SidebarProps) {
+export default function Sidebar({ onSanitize, onStartDrawing, onEditFinding }: SidebarProps) {
     const {
         findings,
         manualFindings,
@@ -27,14 +26,6 @@ export default function Sidebar({ onSanitize, onStartDrawing, onEditFinding, onU
             <div className="p-4 border-b border-slate-700">
                 <div className="flex justify-between items-center mb-2">
                     <h2 className="text-xl font-bold text-white">Review Findings</h2>
-                    {onUpgrade && (
-                        <button
-                            onClick={onUpgrade}
-                            className="text-xs bg-emerald-600 hover:bg-emerald-500 text-white px-2 py-1 rounded transition-colors"
-                        >
-                            UPGRADE
-                        </button>
-                    )}
                 </div>
                 <div className="flex gap-2 text-sm mb-3">
                     <div className="px-2 py-1 bg-red-500/20 border border-red-500 rounded text-red-300">

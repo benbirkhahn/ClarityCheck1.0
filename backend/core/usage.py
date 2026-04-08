@@ -19,7 +19,7 @@ class Plan(str, Enum):
 
 
 PLAN_LIMITS = {
-    Plan.FREE_ANON: 5,
+    Plan.FREE_ANON: 50,
     Plan.FREE_EMAIL: 10,
     Plan.STUDENT_MONTHLY: 50,
     Plan.STUDENT_ANNUAL: 50,

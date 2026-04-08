@@ -3,11 +3,7 @@ import { uploadDocument, getAnalysis, downloadSanitized, pollJobStatus } from '.
 import type { UploadResponse, AnalysisResponse } from '../types';
 import PDFViewer from '../components/PDFViewer';
 import Sidebar from '../components/Sidebar';
-import UsageBadge from '../components/UsageBadge';
-import PricingModal from '../components/PricingModal';
 import { useFindingStore } from '../store/findingStore';
-import { useUsageStore } from '../store/usageStore';
-import { useAuth } from '../context/AuthContext';
 
 export default function Dashboard() {
     const [isDragging, setIsDragging] = useState(false);
@@ -20,8 +16,6 @@ export default function Dashboard() {
     const [editingFindingId, setEditingFindingId] = useState<string | null>(null);
     const [fileUrl, setFileUrl] = useState<string | null>(null);
 
-    const { logout, user } = useAuth();
-
     // Store actions
     const setFindings = useFindingStore(state => state.setFindings);
     const resetStore = useFindingStore(state => state.reset);
@@ -30,9 +24,6 @@ export default function Dashboard() {
     const ignoredFindingIds = useFindingStore(state => state.ignoredFindingIds);
     const updateFinding = useFindingStore(state => state.updateFinding);
     const updateManualFinding = useFindingStore(state => state.updateManualFinding);
-
-    // Usage store
-    const { fetchUsage, isPricingOpen, setPricingOpen } = useUsageStore();
 
     const handleFile = useCallback(async (file: File) => {
         if (!file.name.toLowerCase().endsWith('.pdf')) {
@@ -52,9 +43,6 @@ export default function Dashboard() {
             const result = await uploadDocument(file);
             setUploadResult(result);
 
-            // Refresh usage stats
-            fetchUsage();
-
             // 2. Poll for completion
             setStatusMessage("Analyzing document (this may take a moment)...");
             await pollJobStatus(result.job_id);
@@ -70,7 +58,7 @@ export default function Dashboard() {
             const message = err instanceof Error ? err.message : 'Upload failed';
             // Use friendly error if it's a 429
             if (message.includes('429') || message.includes('Limit reached')) {
-                setError('You have reached your free monthly upload limit.');
+                setError('You have reached the free monthly upload limit.');
             } else {
                 setError(message);
             }
@@ -143,7 +131,6 @@ export default function Dashboard() {
         }
     }, [uploadResult, findings, manualFindings, ignoredFindingIds]);
 
-    // Handle visual edit mode complete
     const handleEditComplete = (id: string, updates: { x: number; y: number; width: number; height: number }) => {
         const manualFinding = manualFindings.find(f => f.id === id);
         if (manualFinding) {
@@ -154,7 +141,6 @@ export default function Dashboard() {
         setEditingFindingId(null);
     };
 
-
     const resetState = () => {
         setUploadResult(null);
         setAnalysis(null);
@@ -162,7 +148,6 @@ export default function Dashboard() {
         resetStore();
     };
 
-    // Wrap handleFile to save URL
     const onFileSelect = (file: File) => {
         const url = URL.createObjectURL(file);
         setFileUrl(url);
@@ -171,7 +156,7 @@ export default function Dashboard() {
 
     return (
         <div className="min-h-screen bg-slate-950 text-slate-200 flex flex-col relative overflow-hidden">
-            {/* Background Effects for Dashboard */}
+            {/* Background Effects */}
             <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-brand-500/10 rounded-full blur-[120px] pointer-events-none" />
             <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-600/10 rounded-full blur-[120px] pointer-events-none" />
 
@@ -182,15 +167,6 @@ export default function Dashboard() {
                         <h1 className="text-2xl font-bold tracking-tight">
                             <span className="text-brand-400 text-glow">Clarity</span>Check
                         </h1>
-                        {analysis && (
-                            <div className={`px-4 py-1.5 rounded-full text-sm font-semibold border ${analysis.risk_score > 70 ? 'bg-red-500/20 border-red-500/50 text-red-300' :
-                                    analysis.risk_score > 30 ? 'bg-yellow-500/20 border-yellow-500/50 text-yellow-300' :
-                                        'bg-brand-500/20 border-brand-500/50 text-brand-300'
-                                }`}>
-                                Score: {analysis.risk_score}
-                            </div>
-                        )}
-                        <UsageBadge />
                     </div>
                     <div className="flex items-center gap-4">
                         {analysis && (
@@ -198,14 +174,6 @@ export default function Dashboard() {
                                 New Scan
                             </button>
                         )}
-                        <div className="flex items-center gap-3 border-l border-white/10 pl-6">
-                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-brand-500 to-blue-600 flex items-center justify-center text-xs font-bold text-white shadow-lg">
-                                {user?.email?.charAt(0).toUpperCase()}
-                            </div>
-                            <button onClick={logout} className="text-sm font-medium text-slate-400 hover:text-white transition-colors">
-                                Logout
-                            </button>
-                        </div>
                     </div>
                 </div>
             </header>
@@ -303,13 +271,9 @@ export default function Dashboard() {
                             onSanitize={handleSanitize}
                             onStartDrawing={() => setIsDrawingMode(true)}
                             onEditFinding={(finding) => setEditingFindingId(finding.id)}
-                            onUpgrade={() => setPricingOpen(true)}
                         />
                     </div>
                 )}
-
-                {/* Pricing Modal */}
-                {isPricingOpen && <div className="fixed inset-0 z-[100]"><PricingModal onClose={() => setPricingOpen(false)} /></div>}
             </main>
         </div>
     );
