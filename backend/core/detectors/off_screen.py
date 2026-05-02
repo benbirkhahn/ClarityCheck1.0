@@ -36,54 +36,40 @@ class OffScreenTextDetector(BaseDetector):
     def _analyze_page(self, page: fitz.Page, page_num: int, page_rect: fitz.Rect) -> list[Finding]:
         """Analyze a single page for off-screen text."""
         findings = []
-        
-        # Standard dict is sufficient as rawdict/xml also fail for extreme off-screen text
-        blocks = page.get_text("dict")["blocks"]
-        
-        for block in blocks:
-            if block.get("type") != 0:
+        margin = self.margin_threshold
+
+        # texttrace preserves off-page text that normal block extraction can miss.
+        for span in page.get_texttrace():
+            chars = "".join(chr(c[0]) for c in span.get("chars", [])).strip()
+            if not chars:
                 continue
-            
-            for line in block.get("lines", []):
-                for span in line.get("spans", []):
-                    text = span.get("text", "").strip()
-                    
-                    if not text:
-                        continue
-                     
-                    bbox = span.get("bbox", (0, 0, 0, 0))
-                    if not bbox: continue
-                    
-                    x0, y0, x1, y1 = bbox
-                    if not bbox: continue
-                    
-                    x0, y0, x1, y1 = bbox
-                    
-                    # Simple robust check: Is it effectively off the page?
-                    # Using a generous margin (e.g. 50pts) to avoid false positives on bleed text
-                    margin = self.margin_threshold
-                    
-                    is_off_screen = (
-                        x1 < -margin or                 # Far Left
-                        x0 > page_rect.width + margin or # Far Right
-                        y1 < -margin or                 # Far Above
-                        y0 > page_rect.height + margin  # Far Below
-                    )
-                    
-                    if is_off_screen:
-                        findings.append(Finding(
-                            detector=self.name,
-                            severity=self.severity,
-                            location=Location(
-                                page=page_num + 1,
-                                x=x0,
-                                y=y0,
-                                width=x1-x0,
-                                height=y1-y0
-                            ),
-                            content="Off-screen text",
-                            context=text[:100] + ("..." if len(text) > 100 else ""),
-                            explanation=f"Text at position ({x0:.0f}, {y0:.0f}) is outside visible page area. Logic: x1({x1}) < -{margin}"
-                        ))
+
+            bbox = span.get("bbox")
+            if not bbox:
+                continue
+
+            x0, y0, x1, y1 = bbox
+            is_off_screen = (
+                x1 < -margin or
+                x0 > page_rect.width + margin or
+                y1 < -margin or
+                y0 > page_rect.height + margin
+            )
+
+            if is_off_screen:
+                findings.append(Finding(
+                    detector=self.name,
+                    severity=self.severity,
+                    location=Location(
+                        page=page_num + 1,
+                        x=x0,
+                        y=y0,
+                        width=x1 - x0,
+                        height=y1 - y0,
+                    ),
+                    content="Off-screen text",
+                    context=chars[:100] + ("..." if len(chars) > 100 else ""),
+                    explanation=f"Text at position ({x0:.0f}, {y0:.0f}) is outside visible page area."
+                ))
         
         return findings

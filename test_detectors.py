@@ -1,16 +1,19 @@
 
+from pathlib import Path
+
 from backend.core.engine import DetectionEngine
-import fitz
+
+
+TEST_PDF = Path(__file__).with_name("test_document.pdf")
 
 def test_detectors():
-    print("Running Detection Engine on trap_gallery.pdf...")
+    print(f"Running Detection Engine on {TEST_PDF.name}...")
     engine = DetectionEngine()
     
-    # Read file
-    with open("trap_gallery.pdf", "rb") as f:
+    with TEST_PDF.open("rb") as f:
         pdf_bytes = f.read()
         
-    report = engine.analyze_bytes(pdf_bytes, "trap_gallery.pdf")
+    report = engine.analyze_bytes(pdf_bytes, TEST_PDF.name)
     
     print(f"\nTotal Findings: {len(report.findings)}")
     for f in report.findings:

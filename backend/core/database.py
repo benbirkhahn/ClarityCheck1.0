@@ -15,6 +15,8 @@ elif DATABASE_URL.startswith("postgresql://") and "+asyncpg" not in DATABASE_URL
 
 if "asyncpg" in DATABASE_URL:
     SYNC_DATABASE_URL = DATABASE_URL.replace("+asyncpg", "+psycopg2")
+elif DATABASE_URL.startswith("sqlite+aiosqlite://"):
+    SYNC_DATABASE_URL = DATABASE_URL.replace("sqlite+aiosqlite://", "sqlite://", 1)
 else:
     SYNC_DATABASE_URL = DATABASE_URL
 

@@ -75,6 +75,8 @@ class TinyTextDetector(BaseDetector):
                                 page=page_num + 1,
                                 x=bbox[0],
                                 y=bbox[1],
+                                width=bbox[2] - bbox[0],
+                                height=bbox[3] - bbox[1],
                             ),
                             content=f"Microscopic text ({font_size:.1f}pt)",
                             context=text[:100] + ("..." if len(text) > 100 else ""),

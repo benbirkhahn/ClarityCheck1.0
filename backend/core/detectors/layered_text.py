@@ -17,7 +17,7 @@ class LayeredTextDetector(BaseDetector):
     name = "LayeredTextDetector"
     description = "Detects text potentially hidden under images or other elements"
     severity = Severity.HIGH
-    enabled = False  # Disabled: complex edge cases, needs tuning
+    enabled = True
     
     def __init__(self, overlap_threshold: float = 0.5):
         """
@@ -116,7 +116,7 @@ class LayeredTextDetector(BaseDetector):
                         
                     overlap = self._calculate_overlap(text_rect, draw_rect)
                     
-                    if overlap > 0.9: # High overlap required for "covered by box"
+                    if overlap > 0.75: # High, but realistic, overlap for covered text
                          findings.append(Finding(
                             detector=self.name,
                             severity=self.severity,
@@ -124,6 +124,8 @@ class LayeredTextDetector(BaseDetector):
                                 page=page_num + 1,
                                 x=text_rect.x0,
                                 y=text_rect.y0,
+                                width=text_rect.width,
+                                height=text_rect.height,
                             ),
                             content=f"Text covered by shape ({overlap*100:.0f}% overlap)",
                             context=text[:100] + ("..." if len(text) > 100 else ""),

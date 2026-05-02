@@ -1,18 +1,23 @@
+from pathlib import Path
+
 import fitz
 from backend.core.engine import DetectionEngine, Report
 from backend.core.sanitizer import sanitize_pdf
 from backend.core.analyzer import TrapAnalysis, AnalyzedFinding, TrapType, TrapImpact
 
+
+TEST_PDF = Path(__file__).with_name("test_document.pdf")
+SANITIZED_PDF = Path(__file__).with_name("sanitized_test_document.pdf")
+
 def test_full_flow():
-    print("Running Full Flow on trap_gallery.pdf...")
+    print(f"Running Full Flow on {TEST_PDF.name}...")
     engine = DetectionEngine()
     
-    # Read file
-    with open("trap_gallery.pdf", "rb") as f:
+    with TEST_PDF.open("rb") as f:
         pdf_bytes = f.read()
         
     # 1. Detect
-    report = engine.analyze_bytes(pdf_bytes, "trap_gallery.pdf")
+    report = engine.analyze_bytes(pdf_bytes, TEST_PDF.name)
     print(f"\nDetected {len(report.findings)} traps.")
     
     # 2. Prepare for Sanitizer
@@ -33,7 +38,7 @@ def test_full_flow():
     # but let's confirm sanitization works without it.
     sanitized_bytes = sanitize_pdf(pdf_bytes, report, analysis=None)
     
-    with open("sanitized_trap_gallery.pdf", "wb") as f:
+    with SANITIZED_PDF.open("wb") as f:
         f.write(sanitized_bytes)
         
     print(f"Sanitized PDF saved. Size: {len(sanitized_bytes)} bytes.")
@@ -57,4 +62,3 @@ def test_full_flow():
         print("\nSUCCESS: All detected traps were removed!")
     else:
         print(f"\nFAILURE: {failures} traps remain.")
-

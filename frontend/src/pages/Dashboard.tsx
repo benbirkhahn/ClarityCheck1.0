@@ -167,6 +167,9 @@ export default function Dashboard() {
                         <h1 className="text-2xl font-bold tracking-tight">
                             <span className="text-brand-400 text-glow">Clarity</span>Check
                         </h1>
+                        <div className="hidden md:inline-flex items-center gap-2 px-3 py-1 rounded-full border border-white/10 bg-white/5 text-xs uppercase tracking-[0.2em] text-slate-300">
+                            Universal PDF tool
+                        </div>
                     </div>
                     <div className="flex items-center gap-4">
                         {analysis && (
@@ -184,8 +187,8 @@ export default function Dashboard() {
                     <div className="flex-1 flex flex-col items-center justify-center p-6 animate-fade-in relative z-10">
                         <div className="max-w-xl w-full">
                             <div className="text-center mb-10">
-                                <h2 className="text-4xl font-bold text-white mb-4">Upload your document</h2>
-                                <p className="text-slate-400 text-lg">Securely analyze and redact sensitive information from your PDFs.</p>
+                                <h2 className="text-4xl font-bold text-white mb-4">Upload a PDF and inspect it</h2>
+                                <p className="text-slate-400 text-lg">No account flow. Just analyze, review findings, and download a cleaned version.</p>
                             </div>
 
                             <div
@@ -233,6 +236,7 @@ export default function Dashboard() {
                                             </svg>
                                             Select PDF File
                                         </label>
+                                        <p className="mt-4 text-xs text-slate-500">Best for interviews, demos, and quick PDF checks.</p>
                                     </div>
                                 )}
                             </div>

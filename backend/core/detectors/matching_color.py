@@ -65,74 +65,45 @@ class MatchingColorDetector(BaseDetector):
         """Analyze a single page for hidden text."""
         findings = []
         
-        # Get text with styling information
-        blocks = page.get_text("dict", flags=fitz.TEXT_PRESERVE_WHITESPACE)["blocks"]
-        
-        # Estimate page background (usually white, but check)
-        # For MVP, assume white background - could enhance later
         page_bg = (1.0, 1.0, 1.0)  # White
-        
-        for block in blocks:
-            if block.get("type") != 0:  # Skip non-text blocks
+
+        for span in page.get_texttrace():
+            text = "".join(chr(c[0]) for c in span.get("chars", [])).strip()
+            if len(text) < self.min_text_length:
                 continue
-            
-            for line in block.get("lines", []):
-                for span in line.get("spans", []):
-                    text = span.get("text", "").strip()
-                    if len(text) < self.min_text_length:
-                        continue
-                    
-                    # Get text color (PyMuPDF returns as int, convert to RGB tuple)
-                    color_int = span.get("color", 0)
-                    text_color = self._int_to_rgb(color_int)
-                    font_size = span.get("size", 12)
-                    
-                    # Check if text color matches background
-                    distance = color_distance(text_color, page_bg)
-                    
-                    if distance < self.color_threshold:
-                        # Training data shows visible white text (≥10pt) is often legitimate
-                        # Only flag white text if it's tiny (<3pt)
-                        if is_near_white(text_color):
-                            # Check for formatting characters with visible font size
-                            if len(text) <= 1 and text in FORMATTING_CHARS and font_size >= 10:
-                                continue  # Skip visible formatting characters
-                            
-                            # Only flag if tiny
-                            if font_size >= self.min_font_size_for_white:
-                                continue  # Skip visible white text
-                        bbox = span.get("bbox", (0, 0, 0, 0))
-                        
-                        # Determine the specific issue
-                        if is_near_white(text_color):
-                            issue_type = "white text on white background"
-                        elif is_near_black(text_color) and is_near_black(page_bg):
-                            issue_type = "black text on black background"
-                        else:
-                            issue_type = f"text color matches background"
-                        
-                        findings.append(Finding(
-                            detector=self.name,
-                            severity=self.severity,
-                            location=Location(
-                                page=page_num + 1,
-                                x=bbox[0],
-                                y=bbox[1],
-                            ),
-                            content=f"Hidden text ({issue_type})",
-                            context=text[:100] + ("..." if len(text) > 100 else ""),
-                            explanation=f"Text with color {self._rgb_to_hex(text_color)} is nearly invisible against the background. Screen readers will read this aloud even though sighted users cannot see it."
-                        ))
+
+            text_color = tuple(span.get("color", (0.0, 0.0, 0.0)))
+            distance = color_distance(text_color, page_bg)
+
+            if distance < self.color_threshold:
+                if is_near_white(text_color) and len(text) <= 1 and text in FORMATTING_CHARS:
+                    continue
+
+                bbox = span.get("bbox", (0, 0, 0, 0))
+
+                if is_near_white(text_color):
+                    issue_type = "white text on white background"
+                elif is_near_black(text_color) and is_near_black(page_bg):
+                    issue_type = "black text on black background"
+                else:
+                    issue_type = "text color matches background"
+
+                findings.append(Finding(
+                    detector=self.name,
+                    severity=self.severity,
+                    location=Location(
+                        page=page_num + 1,
+                        x=bbox[0],
+                        y=bbox[1],
+                        width=bbox[2] - bbox[0],
+                        height=bbox[3] - bbox[1],
+                    ),
+                    content=f"Hidden text ({issue_type})",
+                    context=text[:100] + ("..." if len(text) > 100 else ""),
+                    explanation=f"Text with color {self._rgb_to_hex(text_color)} is nearly invisible against the background. Screen readers will read this aloud even though sighted users cannot see it."
+                ))
         
         return findings
-    
-    def _int_to_rgb(self, color_int: int) -> tuple:
-        """Convert PyMuPDF color int to RGB tuple (0-1 scale)."""
-        # PyMuPDF stores color as integer: 0xRRGGBB
-        r = ((color_int >> 16) & 0xFF) / 255.0
-        g = ((color_int >> 8) & 0xFF) / 255.0
-        b = (color_int & 0xFF) / 255.0
-        return (r, g, b)
     
     def _rgb_to_hex(self, rgb: tuple) -> str:
         """Convert RGB tuple (0-1 scale) to hex string."""

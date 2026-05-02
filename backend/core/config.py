@@ -1,8 +1,12 @@
-from pydantic_settings import BaseSettings
+import secrets
 from typing import List, Union, Optional
-from pydantic import field_validator
+
+from pydantic import Field, field_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
+    model_config = SettingsConfigDict(env_file=".env", case_sensitive=True, validate_default=True)
+
     # App
     PROJECT_NAME: str = "ClarityCheck API"
     VERSION: str = "0.1.0"
@@ -31,7 +35,7 @@ class Settings(BaseSettings):
     STRIPE_WEBHOOK_SECRET: str = ""
 
     # Auth
-    SECRET_KEY: str = "changethis"  # TODO: Generate a strong key
+    SECRET_KEY: str = Field(default_factory=lambda: secrets.token_urlsafe(32))
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     ADMIN_EMAILS: Union[List[str], str] = []
@@ -54,9 +58,14 @@ class Settings(BaseSettings):
         elif isinstance(v, list):
             return [i.strip().lower() for i in v]
         return []
-    
-    class Config:
-        env_file = ".env"
-        case_sensitive = True
+
+    @field_validator("SECRET_KEY")
+    @classmethod
+    def validate_secret_key(cls, v: str) -> str:
+        if not v or v.strip() in {"changethis", "change-me", "replace-me"}:
+            raise ValueError("SECRET_KEY must be set to a strong random value")
+        if len(v.strip()) < 32:
+            raise ValueError("SECRET_KEY must be at least 32 characters long")
+        return v.strip()
 
 settings = Settings()

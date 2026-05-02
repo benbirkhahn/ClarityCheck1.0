@@ -16,6 +16,20 @@ schema_logger.setLevel(logging.INFO)
 from backend.core.models import Report, Finding
 from backend.core.analyzer import TrapAnalysis, TrapType
 
+REDACTING_DETECTORS = {
+    "MatchingColorDetector",
+    "TinyTextDetector",
+    "LowContrastDetector",
+    "OffScreenTextDetector",
+    "InvisibleRenderDetector",
+    "VisualMismatchDetector",
+    "LayeredTextDetector",
+}
+
+
+def _has_detector(finding: Finding, detector_name: str) -> bool:
+    return detector_name in {part.strip() for part in finding.detector.split("+")}
+
 
 def sanitize_pdf(
     pdf_bytes: bytes, 
@@ -75,31 +89,11 @@ def _sanitize_page(page: fitz.Page, findings: list[Finding]):
         detector = finding.detector
         
         # Strategy depends on detector type
-        if detector in ["MatchingColorDetector", "TinyTextDetector", "LowContrastDetector"]:
-            _redact_hidden_text(page, finding)
-        
-        elif detector == "HiddenAnnotationDetector":
-            _remove_annotations(page, finding)
-        
-        elif detector == "OffScreenTextDetector":
-            _redact_hidden_text(page, finding)
-        
-        elif detector == "InvisibleRenderDetector":
+        if any(_has_detector(finding, name) for name in REDACTING_DETECTORS):
             _redact_hidden_text(page, finding)
 
-        elif detector == "VisualMismatchDetector":
-            _redact_hidden_text(page, finding)
-            
-        # SuspiciousSpacingDetector - User feedback indicates this is often valid text.
-        # We will Report it, but NOT Redact it.
-        # elif detector == "SuspiciousSpacingDetector":
-        #    _redact_hidden_text(page, finding)
-        
-        elif detector == "LayeredTextDetector":
-            _redact_hidden_text(page, finding)
-        
-        # ZeroWidthCharDetector - these are in the text stream, harder to remove
-        # For now, we'll leave these as they're less impactful
+        elif _has_detector(finding, "HiddenAnnotationDetector"):
+            _remove_annotations(page, finding)
 
 
 def _redact_hidden_text(page: fitz.Page, finding: Finding):
@@ -139,6 +133,7 @@ def _redact_hidden_text(page: fitz.Page, finding: Finding):
                 text = span.get("text", "")
                 color = span.get("color", 0)
                 size = span.get("size", 12)
+                alpha = span.get("alpha", 255)
                 
                 # Hidden if: 
                 # 1. White color: 0xFFFFFF (16777215) OR very close to white (> 0xFEFEFE)
@@ -154,11 +149,14 @@ def _redact_hidden_text(page: fitz.Page, finding: Finding):
                         is_white = all(c > 0.99 for c in color)
                 
                 is_tiny = size < 4
+                is_transparent = alpha == 0
                 
-                if (is_white or is_tiny) and text.strip():
+                if (is_white or is_tiny or is_transparent) and text.strip():
                     rect = fitz.Rect(bbox)
                     redact_rects.append((rect, text))
-                    schema_logger.info(f"Found match by heuristic (white/tiny): '{text}' Color: {color} Size: {size}")
+                    schema_logger.info(
+                        f"Found match by heuristic: '{text}' Color: {color} Size: {size} Alpha: {alpha}"
+                    )
 
     # FALLBACK: If we haven't found a match by coordinates or heuristic,
     # search for the EXACT text content in the finding.
@@ -172,8 +170,8 @@ def _redact_hidden_text(page: fitz.Page, finding: Finding):
             # Filter by location AND dimension to avoid redacting legitimate text
             expected_x = finding.location.x or 0
             expected_y = finding.location.y or 0
-            expected_width = finding.width or 0
-            expected_height = finding.height or 0
+            expected_width = finding.location.width or 0
+            expected_height = finding.location.height or 0
             
             for rect in text_instances:
                 # Check if this instance matches the expected location
@@ -215,9 +213,7 @@ def _redact_hidden_text(page: fitz.Page, finding: Finding):
             # SAFETY OVERRIDE: If it's definitely a trap (White/Tiny/Layered), NUKE IT regardless of overlap.
             # The "Do No Harm" logic is mainly for "Suspicious Spacing" or "Ambiguous" detections.
             is_high_confidence_trap = (
-                finding.detector in ["MatchingColorDetector", "TinyTextDetector", "LayeredTextDetector", "InvisibleRenderDetector", "VisualMismatchDetector"]
-                # We can't access is_white/is_tiny here easily as they were local to the loop above.
-                # But finding.detector is a good proxy.
+                any(_has_detector(finding, name) for name in REDACTING_DETECTORS)
             )
 
             if not is_high_confidence_trap and span_text and _has_visible_overlap(page, rect, span_text):

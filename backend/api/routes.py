@@ -1,7 +1,5 @@
 """API routes for ClarityCheck."""
 
-import shutil
-import os
 from pathlib import Path
 from datetime import datetime
 from typing import List, Optional
@@ -21,13 +19,43 @@ from pydantic import BaseModel
 from backend.core.analyzer import AnalyzedFinding, TrapType, TrapImpact, TrapAnalysis
 from backend.core.database import get_session
 from backend.core.usage import usage_tracker
-from backend.core.fingerprint import get_user_id_from_request, parse_fingerprint_header
+from backend.core.fingerprint import get_user_id_from_request
 # from backend.workers.tasks import analyze_document_task
 
 router = APIRouter()
 
 UPLOAD_DIR = Path("uploads")
 UPLOAD_DIR.mkdir(exist_ok=True)
+MAX_UPLOAD_BYTES = 10 * 1024 * 1024
+PDF_MAGIC = b"%PDF-"
+
+
+async def _save_pdf_upload(file: UploadFile, destination: Path) -> None:
+    total_bytes = 0
+    first_chunk = True
+
+    try:
+        with destination.open("wb") as buffer:
+            while True:
+                chunk = await file.read(1024 * 1024)
+                if not chunk:
+                    break
+
+                if first_chunk:
+                    if not chunk.startswith(PDF_MAGIC):
+                        raise HTTPException(status_code=400, detail="Uploaded file is not a valid PDF")
+                    first_chunk = False
+
+                total_bytes += len(chunk)
+                if total_bytes > MAX_UPLOAD_BYTES:
+                    raise HTTPException(status_code=413, detail="PDF exceeds the 10MB limit")
+
+                buffer.write(chunk)
+    except Exception:
+        destination.unlink(missing_ok=True)
+        raise
+    finally:
+        await file.close()
 
 
 @router.post("/documents/upload")
@@ -39,7 +67,10 @@ async def upload_document(
     current_user: Optional[DBUser] = Depends(get_optional_current_user)
 ):
     """Upload a PDF for analysis (Async)."""
-    if not file.filename.lower().endswith('.pdf'):
+    if not file.filename.lower().endswith(".pdf"):
+        raise HTTPException(status_code=400, detail="Only PDF files are supported")
+
+    if file.content_type not in {"application/pdf", "application/x-pdf", "binary/octet-stream"}:
         raise HTTPException(status_code=400, detail="Only PDF files are supported")
     
     # Check usage limits BEFORE processing
@@ -62,49 +93,47 @@ async def upload_document(
         )
     
     print(f"[{datetime.utcnow()}] Received upload: {file.filename}")
+    job = DBJob(filename=file.filename, status=JobStatus.PENDING)
+    session.add(job)
+    file_path = UPLOAD_DIR / f"{job.id}.pdf"
+
     try:
-        # Create Job in DB with timeout
         import asyncio
-        job = DBJob(filename=file.filename, status=JobStatus.PENDING)
-        session.add(job)
+
         print(f"[{datetime.utcnow()}] committing job to DB...")
         try:
             await asyncio.wait_for(session.commit(), timeout=5.0)
-        except asyncio.TimeoutError:
+        except asyncio.TimeoutError as exc:
             print(f"[{datetime.utcnow()}] DB Commit Timed Out!")
-            raise HTTPException(status_code=504, detail="Database commit timed out")
-            
+            raise HTTPException(status_code=504, detail="Database commit timed out") from exc
+
         await session.refresh(job)
         print(f"[{datetime.utcnow()}] Job created: {job.id}")
-    
-        # Save file to disk
-        file_path = UPLOAD_DIR / f"{job.id}.pdf"
-        with open(file_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
+
+        await _save_pdf_upload(file, file_path)
         print(f"[{datetime.utcnow()}] File saved to {file_path}")
-            
-        # Dispatch via BackgroundTasks (Non-blocking)
+
         from backend.core.processor import analyze_job_sync
         background_tasks.add_task(analyze_job_sync, job.id, str(file_path))
         print(f"[{datetime.utcnow()}] Background task scheduled")
-        
-        # Track successful upload (increment counter)
+
         await usage_tracker.track_upload(user_id, current_user, session)
         print(f"[{datetime.utcnow()}] Usage tracked for {user_id}")
-        
-    except Exception as e:
-        print(f"[{datetime.utcnow()}] Upload Error: {e}")
-        
-        # Update status to indicate queued
-        # (Optional, as Pending is fine, but we can set to Processing explicitly if we want)
-        # We leave it as PENDING or updated by worker to PROCESSING
-        
-    except Exception as e:
+    except HTTPException:
         job.status = JobStatus.FAILED
-        job.error = str(e)
+        job.error = "upload rejected"
         session.add(job)
         await session.commit()
-        raise HTTPException(status_code=500, detail=f"Upload failed: {e}")
+        file_path.unlink(missing_ok=True)
+        raise
+    except Exception as exc:
+        print(f"[{datetime.utcnow()}] Upload Error: {exc}")
+        job.status = JobStatus.FAILED
+        job.error = str(exc)
+        session.add(job)
+        await session.commit()
+        file_path.unlink(missing_ok=True)
+        raise HTTPException(status_code=500, detail=f"Upload failed: {exc}") from exc
     
     # Get updated usage stats to return to user
     usage_stats = await usage_tracker.get_usage_stats(user_id, current_user, session)
