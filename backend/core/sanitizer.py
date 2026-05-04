@@ -23,8 +23,17 @@ REDACTING_DETECTORS = {
     "OffScreenTextDetector",
     "InvisibleRenderDetector",
     "VisualMismatchDetector",
-    "LayeredTextDetector",
 }
+
+LAYERED_TEXT_SUSPICIOUS_PHRASES = (
+    "ignore previous",
+    "forget all rules",
+    "prompt injection",
+    "system prompt",
+    "act as",
+    "you are a",
+    "do not obey",
+)
 
 
 def _has_detector(finding: Finding, detector_name: str) -> bool:
@@ -92,8 +101,25 @@ def _sanitize_page(page: fitz.Page, findings: list[Finding]):
         if any(_has_detector(finding, name) for name in REDACTING_DETECTORS):
             _redact_hidden_text(page, finding)
 
+        elif _has_detector(finding, "LayeredTextDetector") and _should_redact_layered_text(finding):
+            _redact_hidden_text(page, finding)
+
         elif _has_detector(finding, "HiddenAnnotationDetector"):
             _remove_annotations(page, finding)
+
+
+def _should_redact_layered_text(finding: Finding) -> bool:
+    """Only auto-redact layered text when it looks like a real hidden instruction."""
+    text = " ".join(
+        part for part in [
+            finding.content or "",
+            finding.context or "",
+            finding.explanation or "",
+        ]
+        if part
+    ).lower()
+
+    return any(phrase in text for phrase in LAYERED_TEXT_SUSPICIOUS_PHRASES)
 
 
 def _redact_hidden_text(page: fitz.Page, finding: Finding):
@@ -335,6 +361,9 @@ def get_sanitization_preview(
         
         elif finding.detector == "MetadataDetector":
             action = "CLEAN - Metadata will be sanitized"
+        
+        elif finding.detector == "LayeredTextDetector":
+            action = "REVIEW - Layered text is reported but not auto-removed"
         
         elif finding.detector == "ZeroWidthCharDetector":
             action = "SKIP - Zero-width chars are embedded in text stream"
