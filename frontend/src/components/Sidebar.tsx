@@ -1,9 +1,11 @@
+import { useState } from 'react';
 import { useFindingStore, type ManualFinding } from '../store/findingStore';
 import type { Finding } from '../types';
 
 interface SidebarProps {
     onSanitize: () => void;
     onDownloadSanitized?: () => void;
+    onDownloadReport?: () => void;
     onStartDrawing: () => void;
     onEditFinding?: (finding: Finding | ManualFinding) => void;
     hasSanitizedPreview?: boolean;
@@ -13,11 +15,13 @@ interface SidebarProps {
 export default function Sidebar({
     onSanitize,
     onDownloadSanitized,
+    onDownloadReport,
     onStartDrawing,
     onEditFinding,
     hasSanitizedPreview = false,
     isSanitizing = false,
 }: SidebarProps) {
+    const [showAdvancedTools, setShowAdvancedTools] = useState(false);
     const {
         findings,
         manualFindings,
@@ -53,12 +57,27 @@ export default function Sidebar({
                         ⇄ Invert Selection
                     </button>
                     {onStartDrawing && (
-                        <button
-                            onClick={onStartDrawing}
-                            className="w-full px-3 py-1.5 bg-blue-600 hover:bg-blue-700 border border-blue-500 rounded text-sm text-white transition-colors font-medium"
-                        >
-                            ➕ Add Manual Region
-                        </button>
+                        <>
+                            <button
+                                onClick={() => setShowAdvancedTools((current) => !current)}
+                                className="w-full px-3 py-1.5 bg-slate-900 hover:bg-slate-950 border border-slate-700 rounded text-sm text-slate-200 transition-colors"
+                            >
+                                {showAdvancedTools ? 'Hide Advanced Tools' : 'Show Advanced Tools'}
+                            </button>
+                            {showAdvancedTools && (
+                                <div className="rounded-lg border border-slate-700 bg-slate-900/70 p-3 space-y-2">
+                                    <p className="text-xs text-slate-400">
+                                        Manual removal is a fallback for anything ClarityCheck missed. Draw a region on the original PDF and it will be removed in the cleaned output.
+                                    </p>
+                                    <button
+                                        onClick={onStartDrawing}
+                                        className="w-full px-3 py-1.5 bg-blue-600 hover:bg-blue-700 border border-blue-500 rounded text-sm text-white transition-colors font-medium"
+                                    >
+                                        Add Manual Removal Region
+                                    </button>
+                                </div>
+                            )}
+                        </>
                     )}
                 </div>
                 <p className="text-xs text-slate-500 mt-2">Click any finding to toggle Keep/Remove</p>
@@ -117,6 +136,14 @@ export default function Sidebar({
                         className="w-full py-3 rounded-lg font-semibold text-white transition-colors flex items-center justify-center gap-2 bg-slate-700 hover:bg-slate-600"
                     >
                         <span>Download Sanitized PDF</span>
+                    </button>
+                )}
+                {onDownloadReport && (
+                    <button
+                        onClick={onDownloadReport}
+                        className="w-full py-3 rounded-lg font-semibold text-white transition-colors flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 border border-slate-700"
+                    >
+                        <span>Download Findings Report</span>
                     </button>
                 )}
                 <p className="text-xs text-center text-slate-500">

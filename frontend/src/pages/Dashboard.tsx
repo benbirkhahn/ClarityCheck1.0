@@ -175,6 +175,52 @@ export default function Dashboard() {
         downloadBlob(sanitizedBlob, `sanitized_${uploadResult.filename}`);
     }, [sanitizedBlob, uploadResult]);
 
+    const handleDownloadReport = useCallback(() => {
+        if (!analysis) return;
+
+        const reportPayload = {
+            filename: analysis.filename,
+            exported_at: new Date().toISOString(),
+            risk_score: analysis.risk_score,
+            risk_level: analysis.risk_level,
+            executive_summary: analysis.executive_summary,
+            summary_by_type: analysis.summary_by_type,
+            findings: findings.map((finding) => ({
+                id: finding.id,
+                page: finding.page,
+                detector: finding.detection_method,
+                trap_type: finding.trap_type,
+                impact: finding.impact,
+                hidden_text: finding.hidden_text,
+                decoded_text: finding.decoded_text,
+                explanation: finding.explanation,
+                recommendation: finding.recommendation,
+                action: ignoredFindingIds.has(finding.id) ? 'keep' : 'remove',
+                coordinates: {
+                    x: finding.x ?? null,
+                    y: finding.y ?? null,
+                    width: finding.width ?? null,
+                    height: finding.height ?? null,
+                },
+            })),
+            manual_regions: manualFindings.map((finding) => ({
+                id: finding.id,
+                page: finding.page,
+                action: ignoredFindingIds.has(finding.id) ? 'keep' : 'remove',
+                coordinates: {
+                    x: finding.x,
+                    y: finding.y,
+                    width: finding.width,
+                    height: finding.height,
+                },
+            })),
+        };
+
+        const blob = new Blob([JSON.stringify(reportPayload, null, 2)], { type: 'application/json' });
+        const baseName = analysis.filename.replace(/\.pdf$/i, '');
+        downloadBlob(blob, `${baseName}_findings_report.json`);
+    }, [analysis, findings, ignoredFindingIds, manualFindings]);
+
     const handleEditComplete = (id: string, updates: { x: number; y: number; width: number; height: number }) => {
         const manualFinding = manualFindings.find(f => f.id === id);
         if (manualFinding) {
@@ -494,6 +540,7 @@ export default function Dashboard() {
                         <Sidebar
                             onSanitize={handleSanitize}
                             onDownloadSanitized={handleDownloadSanitized}
+                            onDownloadReport={handleDownloadReport}
                             onStartDrawing={() => setIsDrawingMode(true)}
                             onEditFinding={(finding) => setEditingFindingId(finding.id)}
                             hasSanitizedPreview={Boolean(sanitizedUrl)}
