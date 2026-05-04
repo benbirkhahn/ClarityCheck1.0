@@ -10,6 +10,8 @@ pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
 interface PDFViewerProps {
     fileUrl: string;
     showFindings?: boolean;
+    initialScale?: number;
+    compact?: boolean;
     isDrawingMode?: boolean;
     onDrawingComplete?: () => void;
     editingFindingId?: string | null;
@@ -20,6 +22,8 @@ interface PDFViewerProps {
 export default function PDFViewer({
     fileUrl,
     showFindings = true,
+    initialScale = 1.2,
+    compact = false,
     isDrawingMode = false,
     onDrawingComplete,
     editingFindingId = null,
@@ -27,7 +31,7 @@ export default function PDFViewer({
     onEditCancel
 }: PDFViewerProps) {
     const [numPages, setNumPages] = useState<number>(0);
-    const [scale, setScale] = useState<number>(1.2);
+    const [scale, setScale] = useState<number>(initialScale);
     const [isDrawing, setIsDrawing] = useState(false);
     const [drawStart, setDrawStart] = useState<{ x: number, y: number, pageNum: number } | null>(null);
     const [currentRect, setCurrentRect] = useState<{ x: number, y: number, width: number, height: number } | null>(null);
@@ -105,10 +109,10 @@ export default function PDFViewer({
 
     return (
         <div
-            className="flex flex-col items-center bg-slate-900/50 p-4 rounded-xl min-h-[600px]"
+            className={`flex flex-col bg-slate-900/50 rounded-xl ${compact ? 'items-stretch p-3 min-h-[520px] overflow-auto' : 'items-center p-4 min-h-[600px]'}`}
             style={{ cursor: isDrawingMode ? 'crosshair' : 'default' }}
         >
-            <div className="flex gap-4 mb-4 sticky top-0 z-10 bg-slate-800 p-2 rounded-lg shadow-lg">
+            <div className="flex gap-4 mb-4 sticky top-0 z-10 bg-slate-800 p-2 rounded-lg shadow-lg self-center">
                 <button onClick={() => setScale(s => Math.max(0.5, s - 0.1))} className="px-3 py-1 bg-slate-700 rounded hover:bg-slate-600">-</button>
                 <span className="text-white font-mono self-center">{(scale * 100).toFixed(0)}%</span>
                 <button onClick={() => setScale(s => Math.min(3.0, s + 0.1))} className="px-3 py-1 bg-slate-700 rounded hover:bg-slate-600">+</button>
@@ -119,12 +123,12 @@ export default function PDFViewer({
                 onLoadSuccess={onDocumentLoadSuccess}
                 loading={<div className="text-emerald-400 animate-pulse">Loading PDF...</div>}
                 error={<div className="text-red-400">Failed to load PDF. Please try again.</div>}
-                className="shadow-2xl"
+                className={`shadow-2xl ${compact ? 'w-full' : ''}`}
             >
                 {Array.from(new Array(numPages), (_, index) => (
                     <div
                         key={`page_${index + 1}`}
-                        className="mb-4 relative"
+                        className={`mb-4 relative ${compact ? 'w-fit mx-auto' : ''}`}
                         ref={(el) => {
                             if (el) pageRefs.current.set(index + 1, el);
                         }}

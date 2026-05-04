@@ -309,7 +309,7 @@ export default function Dashboard() {
                         {/* Main Viewer Area */}
                         <div className="flex-1 bg-slate-950/50 p-6 overflow-auto flex justify-center backdrop-blur-sm">
                             <div className="w-full max-w-5xl">
-                                <div className="mb-4 flex items-center justify-between gap-3">
+                                <div className="mb-4 flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
                                     <div className="inline-flex rounded-xl border border-slate-700 bg-slate-900/80 p-1">
                                         {sanitizedUrl && (
                                             <button
@@ -344,7 +344,7 @@ export default function Dashboard() {
                                             Sanitized
                                         </button>
                                     </div>
-                                    <div className="text-sm text-slate-400">
+                                    <div className="text-sm text-slate-400 xl:text-right">
                                         {activeView === 'compare' && sanitizedUrl
                                             ? 'Original with highlights on the left, cleaned output on the right.'
                                             : activeView === 'sanitized'
@@ -354,7 +354,7 @@ export default function Dashboard() {
                                 </div>
                                 {activeView === 'compare' && sanitizedUrl ? (
                                     <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-                                        <div>
+                                        <div className="min-w-0">
                                             <div className="mb-3 flex items-center justify-between">
                                                 <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-300">Original</h3>
                                                 <span className="text-xs text-slate-500">Highlights visible</span>
@@ -363,6 +363,8 @@ export default function Dashboard() {
                                                 <PDFViewer
                                                     fileUrl={fileUrl}
                                                     showFindings={true}
+                                                    initialScale={0.8}
+                                                    compact={true}
                                                     isDrawingMode={isDrawingMode}
                                                     onDrawingComplete={() => setIsDrawingMode(false)}
                                                     editingFindingId={editingFindingId}
@@ -371,7 +373,7 @@ export default function Dashboard() {
                                                 />
                                             </div>
                                         </div>
-                                        <div>
+                                        <div className="min-w-0">
                                             <div className="mb-3 flex items-center justify-between">
                                                 <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-emerald-300">Sanitized</h3>
                                                 <span className="text-xs text-slate-500">Clean output</span>
@@ -380,6 +382,8 @@ export default function Dashboard() {
                                                 <PDFViewer
                                                     fileUrl={sanitizedUrl}
                                                     showFindings={false}
+                                                    initialScale={0.8}
+                                                    compact={true}
                                                     isDrawingMode={false}
                                                     editingFindingId={null}
                                                     onEditComplete={handleEditComplete}
