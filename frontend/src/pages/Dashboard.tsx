@@ -4,6 +4,7 @@ import type { UploadResponse, AnalysisResponse } from '../types';
 import PDFViewer from '../components/PDFViewer';
 import Sidebar from '../components/Sidebar';
 import { useFindingStore } from '../store/findingStore';
+import { demoSamples, type DemoSample } from '../data/demoSamples';
 
 export default function Dashboard() {
     const [isDragging, setIsDragging] = useState(false);
@@ -204,6 +205,35 @@ export default function Dashboard() {
         handleFile(file);
     };
 
+    const handleSampleAnalyze = useCallback(async (sample: DemoSample) => {
+        try {
+            setError(null);
+            const response = await fetch(`/demo-samples/${sample.filename}`);
+            if (!response.ok) {
+                throw new Error('Failed to load sample PDF');
+            }
+
+            const blob = await response.blob();
+            const file = new File([blob], sample.filename, { type: 'application/pdf' });
+
+            if (fileUrl) URL.revokeObjectURL(fileUrl);
+            const url = URL.createObjectURL(file);
+            setFileUrl(url);
+            handleFile(file);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to load sample');
+        }
+    }, [fileUrl, handleFile]);
+
+    const handleSampleDownload = useCallback((sample: DemoSample) => {
+        const link = document.createElement('a');
+        link.href = `/demo-samples/${sample.filename}`;
+        link.download = sample.filename;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+    }, []);
+
     return (
         <div className="min-h-screen bg-slate-950 text-slate-200 flex flex-col relative overflow-hidden">
             {/* Background Effects */}
@@ -299,6 +329,58 @@ export default function Dashboard() {
                                     {error}
                                 </div>
                             )}
+
+                            <section className="mt-10">
+                                <div className="flex items-end justify-between gap-4 mb-5">
+                                    <div>
+                                        <h3 className="text-xl font-semibold text-white">Try sample documents</h3>
+                                        <p className="text-sm text-slate-400 mt-1">Synthetic demo PDFs that show realistic hidden-content attack styles.</p>
+                                    </div>
+                                    <div className="text-xs uppercase tracking-[0.16em] text-slate-500">Stored locally in the app</div>
+                                </div>
+
+                                <div className="grid gap-4 md:grid-cols-2">
+                                    {demoSamples.map((sample) => (
+                                        <article
+                                            key={sample.id}
+                                            className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 backdrop-blur-sm"
+                                        >
+                                            <div className="flex items-start justify-between gap-3 mb-3">
+                                                <div>
+                                                    <div className="text-xs uppercase tracking-[0.16em] text-slate-500 mb-2">{sample.category}</div>
+                                                    <h4 className="text-lg font-semibold text-white leading-tight">{sample.title}</h4>
+                                                </div>
+                                                <span className="shrink-0 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-300">
+                                                    {sample.attack}
+                                                </span>
+                                            </div>
+
+                                            <p className="text-sm leading-6 text-slate-400 min-h-[72px]">
+                                                {sample.summary}
+                                            </p>
+
+                                            <div className="mt-4 flex flex-wrap gap-3">
+                                                <button
+                                                    onClick={() => handleSampleAnalyze(sample)}
+                                                    disabled={isLoading}
+                                                    className={`rounded-xl px-4 py-2 text-sm font-semibold transition-colors ${isLoading
+                                                        ? 'bg-slate-700 text-slate-400 cursor-not-allowed'
+                                                        : 'bg-brand-600 hover:bg-brand-500 text-white'
+                                                        }`}
+                                                >
+                                                    Analyze sample
+                                                </button>
+                                                <button
+                                                    onClick={() => handleSampleDownload(sample)}
+                                                    className="rounded-xl border border-slate-700 px-4 py-2 text-sm font-medium text-slate-300 transition-colors hover:border-slate-500 hover:text-white"
+                                                >
+                                                    Download PDF
+                                                </button>
+                                            </div>
+                                        </article>
+                                    ))}
+                                </div>
+                            </section>
                         </div>
                     </div>
                 )}
