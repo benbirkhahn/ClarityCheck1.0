@@ -19,12 +19,19 @@ class LayeredTextDetector(BaseDetector):
     severity = Severity.HIGH
     enabled = True
     
-    def __init__(self, overlap_threshold: float = 0.5):
+    def __init__(
+        self,
+        overlap_threshold: float = 0.5,
+        cover_overlap_threshold: float = 0.75,
+        max_cover_text_spans: int = 2,
+    ):
         """
         Args:
             overlap_threshold: Minimum overlap ratio to flag (0-1)
         """
         self.overlap_threshold = overlap_threshold
+        self.cover_overlap_threshold = cover_overlap_threshold
+        self.max_cover_text_spans = max_cover_text_spans
     
     def detect(self, doc: fitz.Document) -> list[Finding]:
         """Scan for text hidden under images."""
@@ -76,6 +83,8 @@ class LayeredTextDetector(BaseDetector):
         except:
             pass
         
+        cover_shapes = self._candidate_cover_shapes(page, text_blocks)
+
         # Check for text overlapping with images
         for tb in text_blocks:
             text_rect = tb["rect"]
@@ -102,39 +111,93 @@ class LayeredTextDetector(BaseDetector):
                     ))
                     break  # Don't report same text multiple times
             
-            # Check overlap with filled drawings (e.g. white boxes hiding text)
-            # Only consider FILLED drawings
-            drawings = page.get_drawings()
-            for draw in drawings:
-                # Type 'f' or 'fs' means filled
-                if 'f' in draw.get("type", ""):
-                    draw_rect = draw["rect"]
-                    
-                    # Skip if drawing is tiny (likely noise or bullet point)
-                    if draw_rect.width < 5 or draw_rect.height < 5:
-                        continue
-                        
-                    overlap = self._calculate_overlap(text_rect, draw_rect)
-                    
-                    if overlap > 0.75: # High, but realistic, overlap for covered text
-                         findings.append(Finding(
-                            detector=self.name,
-                            severity=self.severity,
-                            location=Location(
-                                page=page_num + 1,
-                                x=text_rect.x0,
-                                y=text_rect.y0,
-                                width=text_rect.width,
-                                height=text_rect.height,
-                            ),
-                            content=f"Text covered by shape ({overlap*100:.0f}% overlap)",
-                            context=text[:100] + ("..." if len(text) > 100 else ""),
-                            explanation="Text appears to be covered by a filled shape (e.g., a white box). This is a common technique to hide instructions."
-                        ))
-                         break
+            # Check overlap with targeted cover shapes, not general layout panels.
+            for draw_rect in cover_shapes:
+                overlap = self._calculate_overlap(text_rect, draw_rect)
+
+                if overlap > self.cover_overlap_threshold and self._is_visually_hidden(page, text_rect):
+                    findings.append(Finding(
+                        detector=self.name,
+                        severity=self.severity,
+                        location=Location(
+                            page=page_num + 1,
+                            x=text_rect.x0,
+                            y=text_rect.y0,
+                            width=text_rect.width,
+                            height=text_rect.height,
+                        ),
+                        content=f"Text covered by shape ({overlap*100:.0f}% overlap)",
+                        context=text[:100] + ("..." if len(text) > 100 else ""),
+                        explanation="Text appears to be covered by a targeted filled shape. This is a common technique to hide instructions."
+                    ))
+                    break
 
         
         return findings
+
+    def _candidate_cover_shapes(self, page: fitz.Page, text_blocks: list[dict]) -> list[fitz.Rect]:
+        """Keep only filled shapes that look like targeted covers, not layout panels."""
+        cover_shapes = []
+
+        for draw in page.get_drawings():
+            if "f" not in draw.get("type", ""):
+                continue
+
+            draw_rect = draw["rect"]
+            if draw_rect.width < 5 or draw_rect.height < 5:
+                continue
+
+            fill = draw.get("fill")
+            if not self._is_near_page_background(fill):
+                continue
+
+            overlapped_spans = 0
+            for tb in text_blocks:
+                if self._calculate_overlap(tb["rect"], draw_rect) > self.cover_overlap_threshold:
+                    overlapped_spans += 1
+                    if overlapped_spans > self.max_cover_text_spans:
+                        break
+
+            if 0 < overlapped_spans <= self.max_cover_text_spans:
+                cover_shapes.append(draw_rect)
+
+        return cover_shapes
+
+    def _is_near_page_background(self, fill: tuple | None, threshold: float = 0.08) -> bool:
+        """Assume white page background and keep only near-background cover shapes."""
+        if not fill or len(fill) != 3:
+            return False
+        return all(channel >= 1 - threshold for channel in fill)
+
+    def _is_visually_hidden(
+        self,
+        page: fitz.Page,
+        text_rect: fitz.Rect,
+        darkness_threshold: float = 220.0,
+        max_dark_ratio: float = 0.02,
+    ) -> bool:
+        """Render the covered region and confirm there are almost no visible dark glyph pixels."""
+        try:
+            pix = page.get_pixmap(clip=text_rect, matrix=fitz.Matrix(2, 2), alpha=False)
+        except Exception:
+            return True
+
+        if pix.width == 0 or pix.height == 0:
+            return True
+
+        dark_pixels = 0
+        total_pixels = 0
+        for i in range(0, len(pix.samples), pix.n):
+            r, g, b = pix.samples[i:i + 3]
+            luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b
+            if luminance < darkness_threshold:
+                dark_pixels += 1
+            total_pixels += 1
+
+        if total_pixels == 0:
+            return True
+
+        return (dark_pixels / total_pixels) <= max_dark_ratio
     
     def _calculate_overlap(self, rect1: fitz.Rect, rect2: fitz.Rect) -> float:
         """Calculate overlap ratio of rect1 with rect2."""

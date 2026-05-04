@@ -12,7 +12,7 @@ class MetadataDetector(BaseDetector):
     name = "MetadataDetector"
     description = "Flags document metadata that may be read by assistive technology"
     severity = Severity.LOW
-    enabled = False  # Disabled: rarely useful for homework traps
+    enabled = True
     
     # Metadata fields to check
     METADATA_FIELDS = [

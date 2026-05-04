@@ -18,7 +18,7 @@ class SuspiciousSpacingDetector(BaseDetector):
     name = "SuspiciousSpacingDetector"
     description = "Detects text with unusual spacing that may indicate obfuscation"
     severity = Severity.MEDIUM
-    enabled = False  # Disabled: too aggressive, needs tuning with training data
+    enabled = True
     
     def __init__(self, min_text_length: int = 10):
         self.min_text_length = min_text_length
