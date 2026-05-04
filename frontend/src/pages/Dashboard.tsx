@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { uploadDocument, getAnalysis, sanitizeDocument, downloadBlob, pollJobStatus } from '../api';
 import type { UploadResponse, AnalysisResponse } from '../types';
 import PDFViewer from '../components/PDFViewer';
@@ -19,6 +19,8 @@ export default function Dashboard() {
     const [sanitizedBlob, setSanitizedBlob] = useState<Blob | null>(null);
     const [activeView, setActiveView] = useState<'original' | 'sanitized' | 'compare'>('original');
     const [isSanitizing, setIsSanitizing] = useState(false);
+    const fileUrlRef = useRef<string | null>(null);
+    const sanitizedUrlRef = useRef<string | null>(null);
 
     // Store actions
     const setFindings = useFindingStore(state => state.setFindings);
@@ -30,11 +32,19 @@ export default function Dashboard() {
     const updateManualFinding = useFindingStore(state => state.updateManualFinding);
 
     useEffect(() => {
+        fileUrlRef.current = fileUrl;
+    }, [fileUrl]);
+
+    useEffect(() => {
+        sanitizedUrlRef.current = sanitizedUrl;
+    }, [sanitizedUrl]);
+
+    useEffect(() => {
         return () => {
-            if (fileUrl) URL.revokeObjectURL(fileUrl);
-            if (sanitizedUrl) URL.revokeObjectURL(sanitizedUrl);
+            if (fileUrlRef.current) URL.revokeObjectURL(fileUrlRef.current);
+            if (sanitizedUrlRef.current) URL.revokeObjectURL(sanitizedUrlRef.current);
         };
-    }, [fileUrl, sanitizedUrl]);
+    }, []);
 
     const handleFile = useCallback(async (file: File) => {
         if (!file.name.toLowerCase().endsWith('.pdf')) {
