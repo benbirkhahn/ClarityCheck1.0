@@ -17,7 +17,7 @@ export default function Dashboard() {
     const [fileUrl, setFileUrl] = useState<string | null>(null);
     const [sanitizedUrl, setSanitizedUrl] = useState<string | null>(null);
     const [sanitizedBlob, setSanitizedBlob] = useState<Blob | null>(null);
-    const [activeView, setActiveView] = useState<'original' | 'sanitized'>('original');
+    const [activeView, setActiveView] = useState<'original' | 'sanitized' | 'compare'>('original');
     const [isSanitizing, setIsSanitizing] = useState(false);
 
     // Store actions
@@ -151,7 +151,7 @@ export default function Dashboard() {
 
             setSanitizedBlob(blob);
             setSanitizedUrl(nextUrl);
-            setActiveView('sanitized');
+            setActiveView('compare');
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Sanitization failed');
         } finally {
@@ -301,6 +301,17 @@ export default function Dashboard() {
                             <div className="w-full max-w-5xl">
                                 <div className="mb-4 flex items-center justify-between gap-3">
                                     <div className="inline-flex rounded-xl border border-slate-700 bg-slate-900/80 p-1">
+                                        {sanitizedUrl && (
+                                            <button
+                                                onClick={() => setActiveView('compare')}
+                                                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeView === 'compare'
+                                                    ? 'bg-emerald-600 text-white'
+                                                    : 'text-slate-300 hover:text-white'
+                                                    }`}
+                                            >
+                                                Compare
+                                            </button>
+                                        )}
                                         <button
                                             onClick={() => setActiveView('original')}
                                             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeView === 'original'
@@ -320,26 +331,66 @@ export default function Dashboard() {
                                                     : 'text-slate-600 cursor-not-allowed'
                                                 }`}
                                         >
-                                            Sanitized Preview
+                                            Sanitized
                                         </button>
                                     </div>
-                                    {activeView === 'sanitized' && (
-                                        <div className="text-sm text-emerald-300">
-                                            Viewing the cleaned result before download.
-                                        </div>
-                                    )}
+                                    <div className="text-sm text-slate-400">
+                                        {activeView === 'compare' && sanitizedUrl
+                                            ? 'Original with highlights on the left, cleaned output on the right.'
+                                            : activeView === 'sanitized'
+                                                ? 'Viewing the cleaned result before download.'
+                                                : 'Review the flagged source document.'}
+                                    </div>
                                 </div>
-                                <div className="shadow-2xl shadow-black/50">
-                                <PDFViewer
-                                    fileUrl={activeView === 'sanitized' && sanitizedUrl ? sanitizedUrl : fileUrl}
-                                    showFindings={activeView === 'original'}
-                                    isDrawingMode={activeView === 'original' ? isDrawingMode : false}
-                                    onDrawingComplete={activeView === 'original' ? () => setIsDrawingMode(false) : undefined}
-                                    editingFindingId={activeView === 'original' ? editingFindingId : null}
-                                    onEditComplete={handleEditComplete}
-                                    onEditCancel={() => setEditingFindingId(null)}
-                                />
-                            </div>
+                                {activeView === 'compare' && sanitizedUrl ? (
+                                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                                        <div>
+                                            <div className="mb-3 flex items-center justify-between">
+                                                <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-300">Original</h3>
+                                                <span className="text-xs text-slate-500">Highlights visible</span>
+                                            </div>
+                                            <div className="shadow-2xl shadow-black/50">
+                                                <PDFViewer
+                                                    fileUrl={fileUrl}
+                                                    showFindings={true}
+                                                    isDrawingMode={isDrawingMode}
+                                                    onDrawingComplete={() => setIsDrawingMode(false)}
+                                                    editingFindingId={editingFindingId}
+                                                    onEditComplete={handleEditComplete}
+                                                    onEditCancel={() => setEditingFindingId(null)}
+                                                />
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <div className="mb-3 flex items-center justify-between">
+                                                <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-emerald-300">Sanitized</h3>
+                                                <span className="text-xs text-slate-500">Clean output</span>
+                                            </div>
+                                            <div className="shadow-2xl shadow-black/50">
+                                                <PDFViewer
+                                                    fileUrl={sanitizedUrl}
+                                                    showFindings={false}
+                                                    isDrawingMode={false}
+                                                    editingFindingId={null}
+                                                    onEditComplete={handleEditComplete}
+                                                    onEditCancel={() => setEditingFindingId(null)}
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="shadow-2xl shadow-black/50">
+                                        <PDFViewer
+                                            fileUrl={activeView === 'sanitized' && sanitizedUrl ? sanitizedUrl : fileUrl}
+                                            showFindings={activeView === 'original'}
+                                            isDrawingMode={activeView === 'original' ? isDrawingMode : false}
+                                            onDrawingComplete={activeView === 'original' ? () => setIsDrawingMode(false) : undefined}
+                                            editingFindingId={activeView === 'original' ? editingFindingId : null}
+                                            onEditComplete={handleEditComplete}
+                                            onEditCancel={() => setEditingFindingId(null)}
+                                        />
+                                    </div>
+                                )}
                             </div>
                         </div>
 
