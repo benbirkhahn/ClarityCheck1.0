@@ -68,12 +68,11 @@ export async function getAnalysis(jobId: string): Promise<AnalysisResponse> {
   return response.json();
 }
 
-export async function downloadSanitized(
+export async function sanitizeDocument(
   jobId: string,
-  filename: string,
   confirmedFindingIds?: string[],
   manualRegions?: Array<{ id: string, page: number, x: number, y: number, width: number, height: number }>
-): Promise<void> {
+): Promise<Blob> {
   const response = await fetch(`${API_BASE}/jobs/${jobId}/sanitize`, {
     method: 'POST',
     headers: getAuthHeaders({
@@ -89,11 +88,14 @@ export async function downloadSanitized(
     throw new Error(`Failed to sanitize: ${response.statusText}`);
   }
 
-  const blob = await response.blob();
+  return response.blob();
+}
+
+export function downloadBlob(blob: Blob, filename: string): void {
   const url = window.URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `sanitized_${filename}`;
+  a.download = filename;
   document.body.appendChild(a);
   a.click();
   window.URL.revokeObjectURL(url);

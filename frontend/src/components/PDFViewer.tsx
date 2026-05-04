@@ -9,6 +9,7 @@ pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
 
 interface PDFViewerProps {
     fileUrl: string;
+    showFindings?: boolean;
     isDrawingMode?: boolean;
     onDrawingComplete?: () => void;
     editingFindingId?: string | null;
@@ -18,6 +19,7 @@ interface PDFViewerProps {
 
 export default function PDFViewer({
     fileUrl,
+    showFindings = true,
     isDrawingMode = false,
     onDrawingComplete,
     editingFindingId = null,
@@ -141,7 +143,7 @@ export default function PDFViewer({
 
                         {/* Findings Overlay */}
                         <div className="absolute inset-0 pointer-events-none">
-                            {findings
+                            {showFindings && findings
                                 .filter(f => f.page === index + 1)
                                 .map((finding) => {
                                     const ignored = isIgnored(finding.id);
@@ -191,7 +193,7 @@ export default function PDFViewer({
                                 })}
 
                             {/* Manual Findings Overlay */}
-                            {manualFindings.filter(f => f.page === index + 1)
+                            {showFindings && manualFindings.filter(f => f.page === index + 1)
                                 .map((finding) => {
                                     const ignored = isIgnored(finding.id);
                                     const isHovered = hoveredFindingId === finding.id;
@@ -237,7 +239,7 @@ export default function PDFViewer({
 
 
                             {/* ResizableBox for editing */}
-                            {editingFindingId && (() => {
+                            {showFindings && editingFindingId && (() => {
                                 // Find the editing finding (could be auto or manual)
                                 const editingFinding = [...findings, ...manualFindings].find(f => f.id === editingFindingId);
                                 if (!editingFinding) return null;

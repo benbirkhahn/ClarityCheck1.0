@@ -3,11 +3,21 @@ import type { Finding } from '../types';
 
 interface SidebarProps {
     onSanitize: () => void;
+    onDownloadSanitized?: () => void;
     onStartDrawing: () => void;
     onEditFinding?: (finding: Finding | ManualFinding) => void;
+    hasSanitizedPreview?: boolean;
+    isSanitizing?: boolean;
 }
 
-export default function Sidebar({ onSanitize, onStartDrawing, onEditFinding }: SidebarProps) {
+export default function Sidebar({
+    onSanitize,
+    onDownloadSanitized,
+    onStartDrawing,
+    onEditFinding,
+    hasSanitizedPreview = false,
+    isSanitizing = false,
+}: SidebarProps) {
     const {
         findings,
         manualFindings,
@@ -88,19 +98,27 @@ export default function Sidebar({ onSanitize, onStartDrawing, onEditFinding }: S
             <div className="p-4 border-t border-slate-700 bg-slate-900 space-y-3">
                 <button
                     onClick={onSanitize}
-                    disabled={toRemoveCount === 0}
-                    className={`w - full py - 3 rounded - lg font - semibold text - white transition - colors flex items - center justify - center gap - 2 ${toRemoveCount === 0
+                    disabled={toRemoveCount === 0 || isSanitizing}
+                    className={`w-full py-3 rounded-lg font-semibold text-white transition-colors flex items-center justify-center gap-2 ${toRemoveCount === 0 || isSanitizing
                         ? 'bg-slate-700 cursor-not-allowed'
                         : 'bg-emerald-500 hover:bg-emerald-600'
-                        } `}
+                        }`}
                 >
-                    <span>✨ Download Sanitized PDF</span>
+                    <span>{isSanitizing ? 'Preparing Preview...' : hasSanitizedPreview ? 'Refresh Sanitized Preview' : 'Preview Sanitized PDF'}</span>
                     {toRemoveCount > 0 && (
                         <span className="bg-emerald-700 px-2 py-0.5 rounded text-xs">
                             Remove {toRemoveCount}
                         </span>
                     )}
                 </button>
+                {hasSanitizedPreview && onDownloadSanitized && (
+                    <button
+                        onClick={onDownloadSanitized}
+                        className="w-full py-3 rounded-lg font-semibold text-white transition-colors flex items-center justify-center gap-2 bg-slate-700 hover:bg-slate-600"
+                    >
+                        <span>Download Sanitized PDF</span>
+                    </button>
+                )}
                 <p className="text-xs text-center text-slate-500">
                     {toRemoveCount === 0 ? 'All findings will be kept' : `${toKeepCount} finding(s) will be preserved`}
                 </p>

@@ -1,5 +1,5 @@
-import { useState, useCallback } from 'react';
-import { uploadDocument, getAnalysis, downloadSanitized, pollJobStatus } from '../api';
+import { useState, useCallback, useEffect } from 'react';
+import { uploadDocument, getAnalysis, sanitizeDocument, downloadBlob, pollJobStatus } from '../api';
 import type { UploadResponse, AnalysisResponse } from '../types';
 import PDFViewer from '../components/PDFViewer';
 import Sidebar from '../components/Sidebar';
@@ -15,6 +15,10 @@ export default function Dashboard() {
     const [isDrawingMode, setIsDrawingMode] = useState(false);
     const [editingFindingId, setEditingFindingId] = useState<string | null>(null);
     const [fileUrl, setFileUrl] = useState<string | null>(null);
+    const [sanitizedUrl, setSanitizedUrl] = useState<string | null>(null);
+    const [sanitizedBlob, setSanitizedBlob] = useState<Blob | null>(null);
+    const [activeView, setActiveView] = useState<'original' | 'sanitized'>('original');
+    const [isSanitizing, setIsSanitizing] = useState(false);
 
     // Store actions
     const setFindings = useFindingStore(state => state.setFindings);
@@ -24,6 +28,13 @@ export default function Dashboard() {
     const ignoredFindingIds = useFindingStore(state => state.ignoredFindingIds);
     const updateFinding = useFindingStore(state => state.updateFinding);
     const updateManualFinding = useFindingStore(state => state.updateManualFinding);
+
+    useEffect(() => {
+        return () => {
+            if (fileUrl) URL.revokeObjectURL(fileUrl);
+            if (sanitizedUrl) URL.revokeObjectURL(sanitizedUrl);
+        };
+    }, [fileUrl, sanitizedUrl]);
 
     const handleFile = useCallback(async (file: File) => {
         if (!file.name.toLowerCase().endsWith('.pdf')) {
@@ -36,6 +47,12 @@ export default function Dashboard() {
         setError(null);
         setUploadResult(null);
         setAnalysis(null);
+        setActiveView('original');
+        setSanitizedBlob(null);
+        if (sanitizedUrl) {
+            URL.revokeObjectURL(sanitizedUrl);
+            setSanitizedUrl(null);
+        }
         resetStore();
 
         try {
@@ -84,52 +101,68 @@ export default function Dashboard() {
         setIsDragging(false);
     }, []);
 
+    const buildSanitizePayload = useCallback(() => {
+        const editedFindingIds = useFindingStore.getState().editedFindingIds;
+
+        const uneditedAutoFindings = findings.filter(f => !editedFindingIds.has(f.id));
+        const editedAutoFindings = findings.filter(f => editedFindingIds.has(f.id));
+
+        const uneditedConfirmedIds = uneditedAutoFindings
+            .filter(f => !ignoredFindingIds.has(f.id))
+            .map(f => f.id);
+
+        const manualRegions = [
+            ...editedAutoFindings
+                .filter(f => !ignoredFindingIds.has(f.id))
+                .map(f => ({
+                    id: f.id,
+                    page: f.page,
+                    x: f.x || 0,
+                    y: f.y || 0,
+                    width: f.width || 100,
+                    height: f.height || 20,
+                })),
+            ...manualFindings
+                .filter(f => !ignoredFindingIds.has(f.id))
+                .map(f => ({
+                    id: f.id,
+                    page: f.page,
+                    x: f.x,
+                    y: f.y,
+                    width: f.width,
+                    height: f.height,
+                }))
+        ];
+
+        return { uneditedConfirmedIds, manualRegions };
+    }, [findings, manualFindings, ignoredFindingIds]);
+
     const handleSanitize = useCallback(async () => {
         if (!uploadResult) return;
+        setIsSanitizing(true);
         try {
-            // Track which auto findings have been edited
-            const editedFindingIds = useFindingStore.getState().editedFindingIds;
+            const { uneditedConfirmedIds, manualRegions } = buildSanitizePayload();
+            const blob = await sanitizeDocument(uploadResult.job_id, uneditedConfirmedIds, manualRegions);
+            const nextUrl = URL.createObjectURL(blob);
 
-            // Split auto findings into edited and unedited
-            const uneditedAutoFindings = findings.filter(f => !editedFindingIds.has(f.id));
-            const editedAutoFindings = findings.filter(f => editedFindingIds.has(f.id));
+            if (sanitizedUrl) {
+                URL.revokeObjectURL(sanitizedUrl);
+            }
 
-            // Unedited auto findings use backend's stored coordinates
-            const uneditedConfirmedIds = uneditedAutoFindings
-                .filter(f => !ignoredFindingIds.has(f.id))
-                .map(f => f.id);
-
-            // Manual regions: BOTH manual findings AND edited auto findings
-            const manualRegions = [
-                // Edited auto findings with updated coordinates
-                ...editedAutoFindings
-                    .filter(f => !ignoredFindingIds.has(f.id))
-                    .map(f => ({
-                        id: f.id,
-                        page: f.page,
-                        x: f.x || 0,
-                        y: f.y || 0,
-                        width: f.width || 100,
-                        height: f.height || 20,
-                    })),
-                // Manual findings
-                ...manualFindings
-                    .filter(f => !ignoredFindingIds.has(f.id))
-                    .map(f => ({
-                        id: f.id,
-                        page: f.page,
-                        x: f.x,
-                        y: f.y,
-                        width: f.width,
-                        height: f.height,
-                    }))
-            ];
-
-            await downloadSanitized(uploadResult.job_id, uploadResult.filename, uneditedConfirmedIds, manualRegions);
+            setSanitizedBlob(blob);
+            setSanitizedUrl(nextUrl);
+            setActiveView('sanitized');
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Sanitization failed');
+        } finally {
+            setIsSanitizing(false);
         }
-    }, [uploadResult, findings, manualFindings, ignoredFindingIds]);
+    }, [uploadResult, buildSanitizePayload, sanitizedUrl]);
+
+    const handleDownloadSanitized = useCallback(() => {
+        if (!sanitizedBlob || !uploadResult) return;
+        downloadBlob(sanitizedBlob, `sanitized_${uploadResult.filename}`);
+    }, [sanitizedBlob, uploadResult]);
 
     const handleEditComplete = (id: string, updates: { x: number; y: number; width: number; height: number }) => {
         const manualFinding = manualFindings.find(f => f.id === id);
@@ -142,6 +175,12 @@ export default function Dashboard() {
     };
 
     const resetState = () => {
+        if (fileUrl) URL.revokeObjectURL(fileUrl);
+        if (sanitizedUrl) URL.revokeObjectURL(sanitizedUrl);
+        setFileUrl(null);
+        setSanitizedBlob(null);
+        setSanitizedUrl(null);
+        setActiveView('original');
         setUploadResult(null);
         setAnalysis(null);
         setError(null);
@@ -149,6 +188,7 @@ export default function Dashboard() {
     };
 
     const onFileSelect = (file: File) => {
+        if (fileUrl) URL.revokeObjectURL(fileUrl);
         const url = URL.createObjectURL(file);
         setFileUrl(url);
         handleFile(file);
@@ -258,23 +298,59 @@ export default function Dashboard() {
                     <div className="flex h-full animate-fade-in relative z-10">
                         {/* Main Viewer Area */}
                         <div className="flex-1 bg-slate-950/50 p-6 overflow-auto flex justify-center backdrop-blur-sm">
-                            <div className="shadow-2xl shadow-black/50">
+                            <div className="w-full max-w-5xl">
+                                <div className="mb-4 flex items-center justify-between gap-3">
+                                    <div className="inline-flex rounded-xl border border-slate-700 bg-slate-900/80 p-1">
+                                        <button
+                                            onClick={() => setActiveView('original')}
+                                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeView === 'original'
+                                                ? 'bg-slate-700 text-white'
+                                                : 'text-slate-400 hover:text-white'
+                                                }`}
+                                        >
+                                            Original
+                                        </button>
+                                        <button
+                                            onClick={() => sanitizedUrl && setActiveView('sanitized')}
+                                            disabled={!sanitizedUrl}
+                                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeView === 'sanitized'
+                                                ? 'bg-emerald-600 text-white'
+                                                : sanitizedUrl
+                                                    ? 'text-slate-300 hover:text-white'
+                                                    : 'text-slate-600 cursor-not-allowed'
+                                                }`}
+                                        >
+                                            Sanitized Preview
+                                        </button>
+                                    </div>
+                                    {activeView === 'sanitized' && (
+                                        <div className="text-sm text-emerald-300">
+                                            Viewing the cleaned result before download.
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="shadow-2xl shadow-black/50">
                                 <PDFViewer
-                                    fileUrl={fileUrl}
-                                    isDrawingMode={isDrawingMode}
-                                    onDrawingComplete={() => setIsDrawingMode(false)}
-                                    editingFindingId={editingFindingId}
+                                    fileUrl={activeView === 'sanitized' && sanitizedUrl ? sanitizedUrl : fileUrl}
+                                    showFindings={activeView === 'original'}
+                                    isDrawingMode={activeView === 'original' ? isDrawingMode : false}
+                                    onDrawingComplete={activeView === 'original' ? () => setIsDrawingMode(false) : undefined}
+                                    editingFindingId={activeView === 'original' ? editingFindingId : null}
                                     onEditComplete={handleEditComplete}
                                     onEditCancel={() => setEditingFindingId(null)}
                                 />
+                            </div>
                             </div>
                         </div>
 
                         {/* Sidebar */}
                         <Sidebar
                             onSanitize={handleSanitize}
+                            onDownloadSanitized={handleDownloadSanitized}
                             onStartDrawing={() => setIsDrawingMode(true)}
                             onEditFinding={(finding) => setEditingFindingId(finding.id)}
+                            hasSanitizedPreview={Boolean(sanitizedUrl)}
+                            isSanitizing={isSanitizing}
                         />
                     </div>
                 )}
