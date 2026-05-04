@@ -11,6 +11,7 @@ services:
       - key: CORS_ORIGINS
         value: https://clarity-frontend-0unn.onrender.com,https://clarity-frontend-038g.onrender.com
       - key: DATABASE_URL
+        # Demo fallback: use SQLite so the service boots even if the managed DB is unavailable.
         value: sqlite+aiosqlite:///./clarity.db
 
       - key: PROJECT_NAME
