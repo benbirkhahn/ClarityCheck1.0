@@ -18,6 +18,7 @@ dist/
 
 # Test files
 *.pdf
+!frontend/public/demo-samples/*.pdf
 test_document.pdf
 sanitized_*.pdf
 
