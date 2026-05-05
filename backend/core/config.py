@@ -27,7 +27,7 @@ class Settings(BaseSettings):
     # LLM-Powered Detection
     LLM_DETECTOR_ENABLED: bool = False
     GEMINI_API_KEY: Optional[str] = None
-    LLM_MODEL: str = "gemini-2.0-flash-exp"
+    LLM_MODEL: str = "gemini-2.5-flash"
     
     # Stripe
     STRIPE_SECRET_KEY: str = ""

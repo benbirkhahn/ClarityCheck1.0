@@ -25,7 +25,7 @@ class LLMDetector:
     Semantic analyzer using Google Gemini to detect AI prompt injection traps.
     """
     
-    def __init__(self, api_key: Optional[str] = None, model: str = "gemini-2.0-flash-exp"):
+    def __init__(self, api_key: Optional[str] = None, model: str = "gemini-2.5-flash"):
         """
         Initialize LLM detector.
         

@@ -1,48 +1,55 @@
 # ClarityCheck
 
-**Document Sanitization for Assistive Technology Compliance**
+**PDF hidden-content and AI trap scanner**
 
-ClarityCheck detects and removes "digital clutter" from PDFs—invisible elements that screen readers vocalize but sighted users never see. This includes zero-width characters, hidden text layers, off-screen content, and more.
+ClarityCheck is a live web app for finding hidden or misleading content inside PDFs before people or AI systems trust the document. It detects invisible text, off-page content, tiny text, low-contrast content, metadata issues, and prompt-injection style instructions, then lets the user review findings and download a sanitized PDF.
 
-## Why ClarityCheck?
+Live app: https://clarity-frontend-0unn.onrender.com
 
-Screen readers interpret documents differently than visual rendering. Elements like:
-- Zero-width spaces (​) causing unexpected pauses
-- White text on white backgrounds being read aloud
-- Hidden annotations and metadata cluttering the experience
+API health: https://clarity-api-znva.onrender.com/health
 
-...create a confusing, inaccessible experience for visually impaired users.
+## Why It Exists
 
-## Features (MVP)
+PDFs can contain content that is not obvious to a human reviewer but still affects downstream systems. Examples include:
 
-- **Deep Analysis Engine**: Modular detection of 6+ accessibility artifacts
-- **Comprehensive Reporting**: Detailed findings with locations and explanations
-- **Dual-Pane Visualizer**: See what screen readers "see" vs. the cleaned version
-- **One-Click Remediation**: Download sanitized, accessible PDFs
+- White text on white backgrounds
+- Text placed outside the visible page
+- Tiny or low-contrast text
+- Hidden annotations and metadata
+- Prompt-injection instructions aimed at AI tools
+
+ClarityCheck turns that hidden layer into a visible review workflow.
+
+## Features
+
+- **PDF upload and analysis**: Upload a PDF and receive a structured risk report.
+- **Hidden-content detectors**: Finds invisible, off-page, tiny, low-contrast, annotation, metadata, and zero-width character issues.
+- **Optional LLM refinement**: Uses Gemini to help classify whether suspicious hidden text is an AI instruction trap.
+- **Review workflow**: Inspect findings by type, location, severity, and explanation.
+- **Sanitization**: Download a cleaned PDF with selected hidden content removed.
+- **Live deployment**: React frontend and FastAPI backend deployed on Render.
 
 ## Tech Stack
 
 | Layer | Technology |
 |-------|------------|
-| Backend | Python 3.11+, FastAPI, Celery |
+| Backend | Python 3.11+, FastAPI |
 | PDF Processing | PyMuPDF (fitz), pdfplumber |
 | Frontend | React, TypeScript, pdf.js |
-| Database | SQLite (MVP) → PostgreSQL |
-| Queue | Redis |
-| Automation | n8n (local) |
+| Database | SQLite demo fallback / Postgres-ready config |
+| LLM | Gemini API for optional semantic refinement |
+| Deployment | Render static site + Docker web service |
 
 ## Project Structure
 
 ```
 ClarityCheck/
-├── docs/                    # Documentation & diagrams
-├── src/
-│   ├── api/                 # FastAPI routes
-│   ├── core/                # Detection engine, models
-│   └── workers/             # Celery background tasks
+├── backend/                 # FastAPI routes, database, detection engine
 ├── frontend/                # React application
-├── n8n-workflows/           # Exported n8n workflow definitions
-└── tests/                   # pytest test suite
+├── docs/                    # Documentation and diagrams
+├── tests/                   # pytest test suite
+├── render.yaml              # Render deployment config
+└── trap_factory.py          # Generates test PDFs with hidden traps
 ```
 
 ## Getting Started
@@ -51,17 +58,16 @@ ClarityCheck/
 
 - Python 3.11+
 - Node.js 18+
-- Redis (for job queue)
-- n8n (optional, for automation)
+- Optional: Google Gemini API key for LLM refinement
 
 ### Backend Setup
 
 ```bash
 cd ClarityCheck
-python -m venv venv
-source venv/bin/activate  # or `venv\Scripts\activate` on Windows
+python3 -m venv venv
+source venv/bin/activate
 pip install -r requirements.txt
-uvicorn src.api.main:app --reload
+uvicorn backend.api.main:app --reload
 ```
 
 ### Frontend Setup
@@ -72,16 +78,12 @@ npm install
 npm run dev
 ```
 
-### n8n Setup (Optional)
+### Optional LLM Settings
 
-```bash
-# Run n8n locally with Docker
-docker run -it --rm \
-  -p 5678:5678 \
-  -v ~/.n8n:/home/node/.n8n \
-  n8nio/n8n
-
-# Import workflows from n8n-workflows/ directory
+```env
+LLM_DETECTOR_ENABLED=true
+GEMINI_API_KEY=your_google_api_key
+LLM_MODEL=gemini-2.5-flash
 ```
 
 ## Detection Modules
@@ -94,32 +96,29 @@ docker run -it --rm \
 | OpacityHiddenDetector | Text with zero or near-zero opacity | High |
 | HiddenAnnotationDetector | Non-visible PDF annotations | Medium |
 | MetadataDetector | Potentially problematic metadata | Low |
+| TinyTextDetector | Very small text that can hide instructions | Medium |
+| InvisibleRenderDetector | Text using invisible PDF render modes | High |
 
 ## API Endpoints
 
 ```
 POST /api/documents/upload     Upload PDF, returns job_id
 GET  /api/jobs/{id}            Get job status
-GET  /api/jobs/{id}/report     Get findings report
-GET  /api/jobs/{id}/preview/original   Highlighted original
-GET  /api/jobs/{id}/preview/cleaned    Cleaned preview
-GET  /api/jobs/{id}/download   Download cleaned PDF
+GET  /api/jobs/{id}/analysis   Get findings report
+POST /api/jobs/{id}/sanitize   Download sanitized PDF
+GET  /api/usage                Get upload usage
 ```
 
-## Target Users
+## Demo Validation
 
-- 🎓 Educational institutions (course materials)
-- 🏛️ Government agencies (ADA compliance)
-- 🏢 Corporations (public-facing documents)
-- 👩‍💻 Developers (QA workflow integration)
+The live API was smoke-tested with `trap_gallery.pdf`: upload completed, analysis finished, and the app returned a structured risk report.
 
-## Roadmap
+## Best Fit Use Cases
 
-- [x] Project setup and architecture
-- [ ] Phase 1: Foundation (FastAPI, first detector)
-- [ ] Phase 2: Detection engine (all MVP detectors)
-- [ ] Phase 3: Frontend (React, dual-pane viewer)
-- [ ] Phase 4: Integration (n8n, polish)
+- Reviewing uploaded PDFs before passing them into AI tools
+- Checking contracts, resumes, school documents, or forms for hidden content
+- Demonstrating document-trust and prompt-injection defense workflows
+- Sanitizing PDFs before downstream processing
 
 ## License
 
